@@ -1,0 +1,40 @@
+# © 2025 [Supun Akalanka Sriyananda] — MIT License
+# cleanup.service
+# ----------------
+# The SERVICE half of the timer pair.
+# This file describes WHAT to run.
+# The companion cleanup.timer describes WHEN to run it.
+#
+# There's no [Install] section and no WantedBy directive here.
+# This service is never enabled directly — it's activated exclusively
+# by the timer. Enabling the timer (not the service) is what registers
+# it with the boot system.
+#
+# Type=oneshot tells systemd this service is expected to run to
+# completion and exit, rather than run indefinitely as a daemon.
+# This is the correct type for any script-style task.
+
+[Unit]
+Description=Periodic File Cleanup Task
+
+[Service]
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/systemd-services-tutorial/examples/timer-service
+
+# Configuration passed as environment variables.
+# CLEANUP_DIR: the directory to scan and clean
+# MAX_AGE_DAYS: files older than this many days are removed
+Environment="CLEANUP_DIR=/home/pi/data"
+Environment="MAX_AGE_DAYS=7"
+
+# Type=oneshot: run once, wait for exit, then mark complete.
+# systemd won't consider the service "done" until the script exits,
+# ensuring the timer doesn't trigger a second run while one is active.
+Type=oneshot
+
+ExecStart=/usr/bin/python3 cleanup.py
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cleanup-task

@@ -1,0 +1,49 @@
+# © 2025 [Supun Akalanka Sriyananda] — MIT License
+# env-example.service
+# --------------------
+# systemd service file demonstrating the EnvironmentFile pattern
+# for managing secrets and configuration securely.
+#
+# The application reads sensitive values (API keys, passwords) from
+# /etc/env-service/config.env, which is owned by root with 600
+# permissions so only root can read it. systemd reads the file as
+# root and injects the values into the service environment before
+# spawning the process — so the 'pi' user never needs direct file access.
+#
+# Deploy steps:
+#   1. Set up the secrets file (see examples/env-service/config.env.example)
+#   2. sudo cp env-example.service /etc/systemd/system/
+#   3. sudo systemctl daemon-reload
+#   4. sudo systemctl enable --now env-example.service
+
+[Unit]
+Description=Service with Environment File (Tutorial Example)
+After=network.target
+Wants=network.target
+
+[Service]
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/systemd-services-tutorial/examples/env-service
+
+# Load secrets from a separate file with restricted permissions.
+# The leading '-' means: if the file is missing, log a warning and
+# continue starting rather than failing immediately. Remove the '-'
+# in production if the file is strictly required.
+EnvironmentFile=-/etc/env-service/config.env
+
+# Non-sensitive configuration can go inline here. These values are
+# visible in 'systemctl status' output, so keep secrets out of here.
+Environment="LOG_LEVEL=INFO"
+
+ExecStart=/usr/bin/python3 app_with_config.py
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=env-service
+
+[Install]
+WantedBy=multi-user.target

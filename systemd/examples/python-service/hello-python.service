@@ -1,0 +1,69 @@
+# © 2025 [Supun Akalanka Sriyananda] — MIT License
+# hello-python.service
+# --------------------
+# systemd service file for the Python heartbeat example.
+#
+# Deploy steps:
+#   sudo cp hello-python.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now hello-python.service
+#
+# Watch it running:
+#   journalctl -u hello-python.service -f
+#
+# NOTE: Update WorkingDirectory and ExecStart to match the actual
+# location where you cloned this repository on your system.
+
+[Unit]
+Description=Python Heartbeat Service (Tutorial Example)
+# Start after the network subsystem is initialised.
+# Wants= is a soft dependency — if the network is unavailable,
+# the service still starts rather than being blocked.
+After=network.target
+Wants=network.target
+
+[Service]
+# Run as the 'pi' user rather than root. Change this to your
+# username if you are not on a Raspberry Pi.
+User=pi
+Group=pi
+
+# Set the working directory so relative paths in the Python script
+# resolve correctly. Without this, systemd uses '/' as the working
+# directory and relative paths will fail.
+WorkingDirectory=/home/pi/systemd-services-tutorial/examples/python-service
+
+# The full command to start the application.
+# Must use absolute paths for both the interpreter and the script.
+# Run 'which python3' in your terminal to confirm the interpreter path.
+ExecStart=/usr/bin/python3 hello_service.py
+
+# Restart automatically if the process exits with a non-zero exit code
+# or is killed by a signal — but NOT if you deliberately stop it
+# with 'systemctl stop'.
+Restart=on-failure
+
+# Wait 5 seconds before restarting. Prevents rapid crash-restart loops
+# and gives dependencies time to recover if they were the cause.
+RestartSec=5
+
+# Circuit breaker: if the service restarts more than 5 times within
+# 60 seconds, systemd gives up and marks it as failed — a signal that
+# something fundamentally wrong needs human attention.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Capture all stdout and stderr to the systemd journal.
+# This is the default in modern systemd, but being explicit makes
+# the service file self-documenting.
+StandardOutput=journal
+StandardError=journal
+
+# A short tag attached to every journal entry from this service.
+# Makes filtering easier: journalctl -u hello-python.service
+SyslogIdentifier=hello-python
+
+[Install]
+# Start this service when the system reaches the normal
+# multi-user (fully booted) state.
+WantedBy=multi-user.target

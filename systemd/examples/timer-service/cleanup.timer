@@ -1,0 +1,59 @@
+# © 2025 [Supun Akalanka Sriyananda] — MIT License
+# cleanup.timer
+# --------------
+# The TIMER half of the timer pair.
+# This file describes WHEN to run cleanup.service.
+# The companion cleanup.service describes WHAT to run.
+#
+# This is the file you enable and start — not the .service file.
+# The timer and service are linked by sharing the same base name
+# (cleanup). When the timer fires, systemd automatically starts
+# cleanup.service.
+#
+# Deploy steps:
+#   sudo cp cleanup.service /etc/systemd/system/
+#   sudo cp cleanup.timer   /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now cleanup.timer   ← enable the TIMER, not the service
+#
+# Check when it will next fire:
+#   systemctl list-timers
+#
+# Test the task immediately without waiting:
+#   sudo systemctl start cleanup.service
+#   journalctl -u cleanup.service -n 30
+
+[Unit]
+Description=Run File Cleanup Every Day at 3 AM
+
+[Timer]
+# OnCalendar syntax: DayOfWeek Year-Month-Day Hour:Minute:Second
+# Use '*' as a wildcard for any value.
+# '*-*-* 03:00:00' means: every day, any month, any year, at 03:00 AM.
+#
+# Other useful examples:
+#   hourly                 → every hour on the hour
+#   daily                  → every day at midnight
+#   weekly                 → every Monday at midnight
+#   Mon *-*-* 09:00:00     → every Monday at 9 AM
+#   *-*-* 00/6:00:00       → every 6 hours (midnight, 6am, noon, 6pm)
+#   *-*-1 00:00:00         → first day of every month at midnight
+OnCalendar=*-*-* 03:00:00
+
+# If the system was powered off when this timer was supposed to fire,
+# run the task shortly after the next boot to catch up on the missed run.
+# Without this, a missed window is simply skipped forever.
+# For embedded devices that may be switched off on a schedule, this is
+# almost always the right behaviour.
+Persistent=true
+
+# Additionally, run the task 5 minutes after every boot.
+# This ensures cleanup happens even on devices not running continuously,
+# without waiting until 3 AM.
+# Comment this out if you only want the scheduled daily run.
+OnBootSec=5min
+
+[Install]
+# Timers are installed under timers.target (not multi-user.target).
+# This is the correct WantedBy value for all timer units.
+WantedBy=timers.target

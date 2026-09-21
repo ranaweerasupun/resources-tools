@@ -1,0 +1,56 @@
+# © 2025 [Supun Akalanka Sriyananda] — MIT License
+# hello-node.service
+# -------------------
+# systemd service file for the Node.js HTTP server example.
+#
+# Prerequisites:
+#   sudo apt install nodejs    (or install via nvm)
+#   which node                 (verify the path — update ExecStart if different)
+#
+# Deploy steps:
+#   sudo cp hello-node.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now hello-node.service
+#
+# Test it's running:
+#   curl http://localhost:3000
+#   journalctl -u hello-node.service -f
+
+[Unit]
+Description=Node.js HTTP Server (Tutorial Example)
+After=network.target
+Wants=network.target
+
+[Service]
+User=pi
+Group=pi
+
+WorkingDirectory=/home/pi/systemd-services-tutorial/examples/nodejs-service
+
+# Inline environment variables for non-sensitive configuration.
+# These are passed into process.env inside server.js and can be
+# changed here without touching the application code.
+Environment="PORT=3000"
+Environment="HOST=0.0.0.0"
+Environment="NODE_ENV=production"
+
+# Update this path if your Node.js is installed somewhere other
+# than /usr/bin/node (e.g. via nvm: /home/pi/.nvm/versions/node/v20.0.0/bin/node)
+ExecStart=/usr/bin/node server.js
+
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Give the server up to 15 seconds to finish serving active connections
+# before systemd sends SIGKILL. The SIGTERM handler in server.js uses
+# this window to drain connections gracefully.
+TimeoutStopSec=15
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hello-node
+
+[Install]
+WantedBy=multi-user.target
