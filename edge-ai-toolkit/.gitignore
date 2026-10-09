@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# C build artifacts
+01-contract/test_golden
+*.o
+*.out
+
+# Benchmark scratch. Test files go to the system temp dir by default, but
+# --tmpdir may point somewhere inside the tree.
+*.parquet
+*.feather
+*.h5
+*.npz
+*.pkl
+*.jsonl
+*.csv
+*.csv.gz
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------------------------------
+# DELIBERATELY NOT IGNORED: the generated contract and golden vector files.
+#
+#   01-contract/contract.py
+#   01-contract/contract_data.h
+#   01-contract/contract_runtime.h
+#   01-contract/golden_vectors.json
+#   01-contract/golden_vectors.h
+#
+# They are committed precisely so that a drift shows up as a diff in a pull
+# request. That is the entire mechanism. Gitignoring generated artifacts is
+# the instinct to resist here -- if they are not in the repo, `--check` has
+# nothing to compare against and the whole level-1 defence evaporates.
+# ---------------------------------------------------------------------------
