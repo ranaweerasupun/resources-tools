@@ -1,0 +1,146 @@
+  duckdb 1.5.6   pyarrow 26.0.0   pandas 3.0.6
+
+==========================================================================
+  1. Querying files in place
+==========================================================================
+  No import step. The file already knows what is in it.
+
+  canonical.parquet, 2.3 MiB, 180,000 rows
+
+   subject      rows  sessions
+         0    15,000         5
+         1    15,000         5
+         2    15,000         5
+         3    15,000         5
+         4    15,000         5
+
+  DESCRIBE works too, straight off the footer:
+    t_ms       BIGINT
+    session    SMALLINT
+    subject    SMALLINT
+    label      TINYINT
+    ...
+
+==========================================================================
+  2. Validation you can run in CI
+==========================================================================
+  Facts about the dataset, as a command that fails, not a notebook cell.
+
+  $ python validate_dataset.py check clean.parquet   (clean data)
+  ok    no subject is missing entirely                   = 12
+  ok    every subject has at least one positive example  = 0
+  ok    no channel is constant across the whole table    = 0
+  ok    no session has a constant channel                = 0
+  ok    class balance is within 20:1                     = 5.0
+  ok    no missing values in any channel                 = 0
+
+  6/6 passed
+  exit status: 0
+
+  $ python validate_dataset.py check defective.parquet   (defective data)
+  ok    no subject is missing entirely                   = 12
+  FAIL  every subject has at least one positive example  = 1
+  ok    no channel is constant across the whole table    = 0
+  FAIL  no session has a constant channel                = 1
+  FAIL  class balance is within 20:1                     = 15000.0
+  ok    no missing values in any channel                 = 0
+
+  3/6 passed
+  exit status: 1
+
+  Two defects were injected, but three checks failed. The class
+  balance check fails as a consequence of the zeroed labels: a
+  subject with no positives gives the largest ratio the check can
+  produce. Checks fail in related groups, so read the whole list
+  before concluding you have three separate problems.
+
+  A set of checks that has never failed tells you nothing. Same
+  idea as the sabotage script in 01-contract: break the data on
+  purpose, and confirm the checks notice.
+
+==========================================================================
+  3. Asserting a split has no leakage
+==========================================================================
+  Compare the files training and evaluation actually read.
+
+  $ python validate_dataset.py split train.parquet test.parquet   (subjects held out)
+  subjects in both train and test: 0
+  sessions in both train and test: 0
+  disjoint
+  exit status: 0
+
+  $ python validate_dataset.py split train_random.parquet test_random.parquet   (random row split)
+  subjects in both train and test: 12
+  sessions in both train and test: 60
+  LEAKAGE
+  exit status: 1
+
+  The random split is how a model scores 99.4% in testing and far
+  less in the field: the test set holds the same people and the
+  same recordings it trained on. Run this check on the files your
+  training and evaluation code actually read.
+
+==========================================================================
+  4. Two sources, one query
+==========================================================================
+  union_by_name matches columns by name and fills the gaps with NULL.
+
+  source        rows  subjects  accel_mag   ambient_c
+  siteA       90,000         6       2.03           0
+  siteB       90,000         6      17.94      90,000
+
+  siteA has no ambient_c column at all. Without union_by_name
+  this query fails; with it, siteA's rows carry NULL there and
+  count(ambient_c) reports 0 because count ignores NULLs.
+
+  accel_mag is the average size of the acceleration vector. The
+  two sites record the same kind of activity, so it should be
+  similar. Site B's is about nine times larger, close to the
+  factor of 9.8 between m/s^2 and g: site B reports m/s^2. One
+  GROUP BY per source catches this before the two datasets are
+  trained on together.
+
+==========================================================================
+  5. A hard memory ceiling
+==========================================================================
+  Give the engine a budget, and see what happens when it is too small.
+
+  1,800,000 rows, 64 MiB as a DataFrame, 20.2 MiB on disk
+  query: sort every row by ax and write the result out
+
+  memory_limit=4GB     completed in  0.89s
+  memory_limit=256MB   completed in  0.88s
+  memory_limit=64MB    completed in  1.41s
+  memory_limit=16MB    OutOfMemoryException
+                       Out of Memory Error: failed to pin block of size 256
+
+  A budget smaller than the data still completes: the engine
+  spills intermediate results to temp_directory and takes
+  longer. (The spill files are deleted as soon as they are
+  finished with, so there is nothing left to measure afterwards
+  -- the time is the observable.)
+
+  Below some point it stops, and this is the part that matters
+  on a gateway: it raises an exception you can catch, rather
+  than growing until the kernel's OOM killer takes the process
+  out. pandas gives you the second behaviour.
+
+==========================================================================
+  6. Straight into numpy, via Arrow
+==========================================================================
+  The last hop, from query result to model input.
+
+  rows: 330,000
+
+  .df()               -> pandas DataFrame      46.6 ms
+  .to_arrow_table()   -> arrow Table           32.9 ms
+  arrow column -> numpy (zero copy)             0.5 ms
+
+  zero_copy_only=True succeeded, so that last step is a view
+  over the same bytes: float32, 1.3 MiB not copied.
+
+  Worth knowing for Part 4: this works because Arrow's in-memory
+  layout is contiguous and typed the same way numpy's is.
+
+==========================================================================
+  6 demo(s) complete

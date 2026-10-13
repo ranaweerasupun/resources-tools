@@ -1,0 +1,37 @@
+== level 1: constants ======================================
+python3 data_contract.py --check
+  contract DC-001 r1.0  hash d5a07fe0a05f  -- 3 generated files in sync
+
+== level 2: functions ======================================
+python3 gen_golden.py --check
+  golden vectors in sync  (10 scenes, hash d5a07fe0a05f)
+make --no-print-directory run
+cc -std=c99 -Wall -Wextra -Wpedantic -O2 -o test_golden test_golden.c features.c -lm
+./test_golden
+ok   all_zero           zero is a valid reading, not the sentinel
+ok   channel_distinct   channel order and feature layout
+ok   scale_split        accel vs gyro scale factors not swapped
+ok   alternating        ddof: population vs sample std
+ok   ramp               all four statistics distinct and non-trivial
+ok   impulse            min/max, and no off-by-one at the window edges
+ok   negative           signed values; min/max not initialised to zero
+ok   some_missing       sentinels excluded, not averaged in
+ok   all_missing        a fully absent channel propagates the sentinel
+ok   realistic          ordinary motion, nothing round or symmetric
+
+10 scenes, 240 feature comparisons, 0 failures
+
+== python side =============================================
+python3 test_contract.py
+  ok   test_contract_files_have_not_drifted
+  ok   test_contract_is_internally_consistent
+  ok   test_feature_layout_is_a_bijection
+  ok   test_golden_vectors_have_not_drifted
+  ok   test_golden_was_generated_against_this_contract
+  ok   test_missing_channel_does_not_become_zero
+  ok   test_open_decisions_are_none_not_guessed
+  ok   test_python_reproduces_the_golden_vectors
+  ok   test_runtime_header_refuses_to_compile_while_undecided
+  ok   test_sentinel_is_not_scaled
+
+  10/10 passed

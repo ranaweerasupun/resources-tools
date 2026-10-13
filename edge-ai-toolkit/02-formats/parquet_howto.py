@@ -27,6 +27,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 
 _HERE = Path(__file__).resolve().parent
@@ -297,9 +298,24 @@ def demo_partition(ws):
               f"{size(root/name)/1024:.0f} KiB")
     print(f"    ... {len(parts) - 4} more\n" if len(parts) > 4 else "")
 
+    # The partition column lives only in the folder names, which are text.
+    # Read back with no further information, pyarrow has to guess its type,
+    # and it guesses a dictionary type, which pandas turns into 'category'.
+    # The int16 the contract declared is lost, exactly as with CSV.
+    guessed = pq.read_table(root).to_pandas()["subject"].dtype
+    print(f"  subject saved as int16, read back as: {guessed}")
+
+    # The fix: declare the partition column's type when reading.
+    part = ds.partitioning(pa.schema([("subject", pa.int16())]),
+                           flavor="hive")
+    declared = pq.read_table(root, partitioning=part).to_pandas()["subject"]
+    print(f"  ...and with the type declared on read: {declared.dtype}\n")
+
     held_out = 3
-    train = pq.read_table(root, filters=[("subject", "!=", held_out)])
-    test = pq.read_table(root, filters=[("subject", "==", held_out)])
+    train = pq.read_table(root, partitioning=part,
+                          filters=[("subject", "!=", held_out)])
+    test = pq.read_table(root, partitioning=part,
+                         filters=[("subject", "==", held_out)])
 
     tr = set(train.column("subject").to_pylist())
     te = set(test.column("subject").to_pylist())
@@ -311,9 +327,11 @@ def demo_partition(ws):
     print("\n  The partition column is stored in the PATH, not in the file.")
     print("  It costs zero bytes, and a reader that filters on it skips")
     print("  whole directories without opening them.")
+    print("\n  But the folder names carry no type, so declare the partition")
+    print("  column's type when you read it back, or it changes silently.")
     print("\n  This is the same idea as generating both sides of a contract:")
-    print("  the guarantee is structural, not something anyone has to")
-    print("  remember to check.")
+    print("  the guarantee is built into the layout, not something anyone")
+    print("  has to remember to check.")
 
 
 def demo_append(ws):
@@ -392,6 +410,10 @@ def demo_pickle(ws):
 
     print(f"  {p.name} is {size(p)} bytes. It looks like data.")
     print(f"  Loading it with pandas.read_pickle:\n")
+    # The payload's echo writes straight to the terminal, outside Python's
+    # buffer. Flush first, or with output piped to a file the echo line
+    # lands at the top of the file instead of here.
+    sys.stdout.flush()
     try:
         pd.read_pickle(p)
     except Exception as e:                                # pragma: no cover

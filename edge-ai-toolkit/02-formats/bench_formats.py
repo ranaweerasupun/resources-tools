@@ -151,7 +151,7 @@ OPTIONAL = {"hdf5": "h5py",
 # measurement plumbing
 # =========================================================================
 
-def write_and_sync(writer, df, path):
+def write_and_sync(writer, df, path, sync=True):
     """
     Serialise, then force the bytes to the device, and time both.
 
@@ -165,6 +165,11 @@ def write_and_sync(writer, df, path):
     """
     t0 = time.perf_counter()
     writer(df, path)
+    if not sync:
+        # --no-fsync: reproduce the original mistake on purpose. The time
+        # stops as soon as the kernel has accepted the bytes, before they
+        # reach the card. Use it only to see how wrong the numbers get.
+        return time.perf_counter() - t0
     # Directory fsync too, so the metadata entry is durable, not just data.
     fd = os.open(path, os.O_RDONLY)
     try:
@@ -255,6 +260,10 @@ def main():
     ap.add_argument("--tmpdir", help="where to write test files "
                                      "(default: system temp)")
     ap.add_argument("--json", help="also write results here")
+    ap.add_argument("--no-fsync", action="store_true",
+                    help="time writes without fsync, to reproduce the "
+                         "measurement mistake described in the series "
+                         "(results are wrong on purpose)")
     ap.add_argument("--worker", help=argparse.SUPPRESS)
     ap.add_argument("--path", help=argparse.SUPPRESS)
     ap.add_argument("--declared", help=argparse.SUPPRESS)
@@ -308,6 +317,9 @@ def main():
         prefix="fmtbench-"))
     tmp.mkdir(parents=True, exist_ok=True)
     print(f"  scratch    {tmp}")
+    if args.no_fsync:
+        print("  WARNING    --no-fsync: write times stop at the page cache and")
+        print("             are wrong on purpose. Do not publish these numbers.")
     free = shutil.disk_usage(tmp).free
     print(f"  free space {human(free)}")
     print()
@@ -330,7 +342,8 @@ def main():
             for _ in range(args.repeat):
                 if path.exists():
                     path.unlink()
-                wt.append(write_and_sync(writer, df, path))
+                wt.append(write_and_sync(writer, df, path,
+                                         sync=not args.no_fsync))
             row["write_s"] = statistics.median(wt)
             row["write_s_all"] = wt
             row["bytes"] = path.stat().st_size
@@ -426,6 +439,14 @@ def main():
             shutil.rmtree(tmp)
     except OSError:
         pass
+
+    # A format that failed to write or read is an error, so exit with one,
+    # and a CI job running this benchmark fails. Formats skipped because
+    # their library is not installed are not counted here.
+    failed = [r["format"] for r in results if "error" in r]
+    if failed:
+        print(f"\n  !! these formats failed: {', '.join(failed)}")
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

@@ -1,227 +1,221 @@
-# 01 — Data contracts for edge AI
+# 01-contract: data contracts for edge AI
 
-Companion code for **post 1** of the Edge AI series.
-
-Everything here runs on a laptop. No board, no sensor, no dataset, no SDK —
-just Python and a C compiler.
+Companion code for **Part 1** of the Edge AI Lab Notes series. Everything
+here runs on a laptop with Python, numpy, a C compiler and `make`.
 
 ```bash
-make generate     # regenerate every generated file from the contract
-make run          # build and run the C golden test
-make check        # the full three-level check, as CI would run it
-python sabotage.py   # break the C code ten ways, prove each is caught
+make generate        # regenerate every generated file from the contract
+make run             # build and run the C golden test
+make check           # run all three levels of checks, as CI would
+python sabotage.py   # break the C code ten ways and confirm each is caught
 ```
-
----
 
 ## The problem
 
-An edge AI system trains a model in one language and runs it in another.
-Between them is a joint — the **seam**. Both sides must agree exactly on what
-a window of data is: how many samples, in what order, in what units, with
-what meaning for "no reading".
+An edge AI system usually trains its model in Python and runs it on a device
+programmed in C. The two programs must agree exactly on what a window of
+sensor data is: how many readings it holds, the order of the channels, the
+units, how a missing reading is marked, and where each feature goes in the
+list the model receives.
 
-Most bugs announce themselves. A crash, an assertion, a red test, a `NaN`.
-Seam bugs do not. The model is fed something it was never trained on and
-returns a confident, well-formed, completely wrong answer. Forever.
+When they disagree, nothing crashes. The model simply receives data it was
+never trained on, and gives answers that look normal but are wrong.
 
-The naive fix is discipline — everyone remember to keep the two sides in
-sync. That fails, always, because it relies on memory. The real fix has a
-shape:
+Asking everyone to be careful does not prevent this, because it depends on
+people remembering. This code takes a different approach: it sets up the
+project so that the two sides cannot drift apart without a check failing.
+There are three levels, and each catches a kind of mistake the previous one
+cannot.
 
-> Do not **remember** to keep two things in sync.
-> Make it **impossible** for them to be out of sync without something failing
-> loudly.
-
-That applies at three levels, and each catches what the one below it cannot.
-
-| Level | What disagrees | Mechanism | Files |
+| Level | What can disagree | How it is caught | Files |
 |---|---|---|---|
-| 1 | a **constant** | one source, generated files, hash + `--check` | `data_contract.py` |
-| 2 | a **function** | golden vectors | `gen_golden.py`, `test_golden.c` |
-| 3 | a **decision nobody made** | `#error` until it is decided | `contract_runtime.h` |
+| 1 | A **constant**, such as the window length | One source file generates both languages; `--check` detects drift | `data_contract.py` |
+| 2 | A **function**, such as the feature calculation | Golden vectors that both languages must reproduce | `gen_golden.py`, `test_golden.c`, `test_contract.py` |
+| 3 | A **value nobody has decided yet** | The firmware refuses to compile until it is set | `contract_runtime.h` |
 
----
+The series covers each level in its own post:
+[1.1](https://bittobyteacademy.com/blog/data-contracts-for-edge-ai-the-bug-class-that-doesnt-crash/)
+introduces the problem,
+[1.2](https://bittobyteacademy.com/blog/one-source-for-python-and-c-generating-shared-constants/)
+covers Level 1,
+[1.3](https://bittobyteacademy.com/blog/golden-vectors-testing-that-python-and-c-calculate-the-same-features/)
+and [1.4](https://bittobyteacademy.com/blog/choosing-test-cases-and-proving-they-catch-real-bugs/)
+cover Level 2, and
+[1.5](https://bittobyteacademy.com/blog/refusing-to-build-on-guessed-values/)
+covers Level 3.
 
-## Level 1 — constants
+## Level 1: constants
 
-`data_contract.py` is the only place the numbers exist. It generates the
-files both languages use, and every generated file carries a hash of the
-whole contract.
+`data_contract.py` is the only file where the shared values are written by
+hand. It checks that its own values are consistent, then generates three
+files:
 
 ```
-              data_contract.py          the only hand-written source
+              data_contract.py
+            (the only hand-written source)
                      │
         ┌────────────┼────────────┐
         ▼            ▼            ▼
-  contract.py  contract_data.h  contract_runtime.h
-   (Python)         (C)              (C)
+   contract.py  contract_data.h  contract_runtime.h
+    (Python)         (C)              (C)
 ```
+
+Every generated file records a hash of the contract it was made from.
 
 ```bash
 python data_contract.py --check
 ```
 
-Regenerates everything in memory and compares against disk. Hand-edit a
-generated file and it says so and exits non-zero.
+This regenerates the three files in memory and compares them with the files
+on disk. If a generated file was edited by hand, it reports `HAS DRIFTED`. If
+the contract changed but nobody regenerated, it reports `OUT OF DATE`. Either
+way it exits with status 1, which fails a CI job.
 
----
+## Level 2: functions
 
-## Level 2 — functions
+A hash can confirm that `WINDOW_SAMPLES` is 100 on both sides. It cannot
+confirm that two functions, written separately in Python and C, calculate
+the same features.
 
-This is the part most people skip, and it is the reason the directory exists.
+**Golden vectors** solve this. `gen_golden.py` runs the Python reference,
+`features.py`, on ten chosen input windows called scenes, and saves both the
+inputs and the outputs. Both `features.py` and `features.c` must then
+reproduce those outputs.
 
-> **A constant that disagrees is caught by a hash.**
-> **A function that disagrees is not.**
+The vectors are written twice by the same generator: `golden_vectors.json`
+for the Python test, because it is easy to read and review, and
+`golden_vectors.h` for the C test, because a header needs no file system or
+JSON parser and can run on a microcontroller.
 
-You can hash `WINDOW_SAMPLES = 100`. You cannot hash "the routine that turns
-a window into features". Two people write it two subtly different ways, both
-files pass every level-1 check, and the model is quietly fed the wrong thing.
+### The ten scenes
 
-A **golden vector** is: freeze specific inputs and the exact outputs the
-Python reference produces for them, commit those numbers, and make *both*
-languages prove they reproduce them.
+Each scene is designed to catch a specific mistake.
 
-Think of translating a recipe. You can check the ingredient list matches —
-that is level 1. But the *method*, "fold gently until just combined", can be
-mistranslated in ways that pass any word-by-word check, and you find out when
-the cake is wrong. A golden vector is: bake it, weigh it, write down "500 g,
-8 cm tall". The translation now has to produce a 500 g, 8 cm cake.
-
-**The output is the specification.**
-
-Ten scenes are frozen in `golden_vectors.json`. Each targets a specific way
-the seam can break — a scene that does not encode a failure mode is padding,
-and padding teaches people the suite is decorative.
-
-| Scene | The bug it catches |
+| Scene | The mistake it is designed to catch |
 |---|---|
-| `all_zero` | zero is a valid reading, not the sentinel |
-| `channel_distinct` | channel order and feature layout |
-| `scale_split` | accelerometer vs gyroscope factors swapped |
-| `alternating` | `ddof` — population vs sample standard deviation |
-| `ramp` | all four statistics distinct and non-trivial |
-| `impulse` | min/max, and no off-by-one at the window edges |
-| `negative` | signed values; min/max not initialised to zero |
-| `some_missing` | sentinels excluded, not averaged in |
-| `all_missing` | a fully absent channel propagates the sentinel |
-| `realistic` | ordinary motion, nothing round or symmetric |
+| `all_zero` | Treating a reading of zero as missing |
+| `channel_distinct` | Channels swapped, or results written to the wrong position |
+| `scale_split` | Accelerometer and gyroscope conversions swapped |
+| `alternating` | The wrong standard deviation formula (`ddof`) |
+| `ramp` | Any two statistics confused with each other |
+| `impulse` | Minimum and maximum mixed up, or a reading skipped |
+| `negative` | Minimum and maximum started at zero |
+| `some_missing` | Missing readings averaged in as real values |
+| `all_missing` | A missing channel reported as zero |
+| `realistic` | Anything the simpler scenes miss |
 
-### Two files, one generator
+### Why the comparison has a tolerance
 
-`gen_golden.py` writes the same vectors twice — `golden_vectors.json` for the
-Python tests (readable, reviewable in a diff) and `golden_vectors.h` for the
-C test (no JSON parser, runs on a target with no filesystem). One generator,
-so they cannot disagree with each other.
+Python calculates in 64-bit floating point and the device in 32-bit, so the
+two never agree to the last digit. A test that demands exact equality fails
+all the time and soon gets switched off.
 
-### Why not exact equality
+The contract sets `GOLDEN_REL_TOL = 1e-4` and `GOLDEN_ABS_TOL = 1e-3`, and a
+value passes if it is within either. Measured on this code, the largest
+float32 rounding difference is about `1.3e-7` relative, roughly 800 times
+below the tolerance, and the smallest deliberate mistake (the standard
+deviation formula) is about 0.5%, roughly 50 times above it.
 
-Python computes in float64, the device in float32. They will never match to
-the last bit. A golden test demanding exact equality fails forever and gets
-switched off within a week — and a switched-off test is worse than no test,
-because people believe it is running.
+The absolute tolerance is generous for small values: accelerometer features
+in g are often below 1, so a 0.5% error in a small value can pass. In this
+code every such mistake is still caught by the larger gyroscope values. Post
+1.3 explains this in more detail.
 
-So the contract carries `GOLDEN_REL_TOL = 1e-4` and `GOLDEN_ABS_TOL = 1e-3`.
-Loose enough for float32 rounding. Tight enough that a wrong sentinel (off by
-thousands), a transposed layout (off by orders of magnitude) and a `ddof`
-mismatch (off by ~0.5%) all fall well outside.
+## Proving the test works
 
----
+A test that has never failed tells you nothing, because a useful golden test
+and a useless one both report zero failures.
 
-## Level 3 — decisions nobody made
+```bash
+python sabotage.py           # run all ten
+python sabotage.py --list    # describe each one
+python sabotage.py ddof      # run just one
+```
 
-Some values are `None` on purpose:
+`sabotage.py` makes one deliberate change to `features.c`, rebuilds, checks
+that the golden test now fails, and restores the original. Each change is a
+mistake a capable engineer could realistically make.
+
+| Sabotage | What it changes | Failures | Caught by |
+|---|---|---|---|
+| `ddof` | Uses the sample standard deviation formula | 22 | 5 scenes |
+| `layout` | Writes results in the wrong order | 80 | all 10 scenes |
+| `sentinel_zero` | Reports a missing channel as 0 | 4 | `all_missing` only |
+| `sentinel_included` | Averages missing readings in as real values | 22 | `some_missing`, `all_missing` |
+| `scale_swap` | Swaps the accelerometer and gyroscope conversions | 90 | 9 scenes |
+| `scale_copy_paste` | Gives one gyroscope channel the accelerometer conversion | 30 | 9 scenes |
+| `minmax_swap` | Swaps the minimum and maximum | 60 | 5 scenes |
+| `minmax_init_zero` | Starts the minimum and maximum at 0 | 38 | 7 scenes |
+| `off_by_one` | Skips the last reading of every window | 46 | 5 scenes |
+| `zero_as_missing` | Treats a reading of 0 as missing | 33 | `all_zero`, `ramp` |
+
+All ten are caught. The "caught by" column is the most useful part: it shows
+which scenes do essential work. `sentinel_zero` is caught only by
+`all_missing`, so removing that scene would let the mistake through.
+
+If a sabotage is ever reported as `MISSED`, the golden vectors have a blind
+spot, and the fix is to add a scene that targets it.
+
+## Level 3: values nobody has decided yet
+
+Some settings cannot be chosen until there is real data, so the contract
+marks them as undecided:
 
 ```python
 "DETECTION_THRESHOLD": None,      # <-- pick on a validation set
 "ALERT_HOLD_S": None,             # <-- measure on the bench
 ```
 
-These are not oversights. A missing decision must be a **loud** failure, not
-a quiet default, so the generated header emits:
+For each value that is still `None`, the generator writes an `#error` into
+`contract_runtime.h`, so any firmware that includes it will not compile:
 
 ```c
 #error "DETECTION_THRESHOLD is unset in data_contract.py. Refusing to build on a guessed constant."
 ```
 
-The firmware will not compile until someone decides. **A guessed constant is
-worse than no constant, because a guess looks exactly like a decision.**
+Once someone sets the value in the contract, the generator writes a normal
+`#define` instead. A guessed value looks exactly like a decided one, so a
+missing decision should stop the build rather than hide behind a default.
 
-### Why there are two headers
+### Why there are two C headers
 
-`contract_data.h` is the seam — channels, layout, units, sentinels. Fully
-decided, never `#error`s. `contract_runtime.h` is product settings —
-thresholds, hold times. Not decided, so it does.
+`contract_data.h` describes the shape of the data: channels, layout, units,
+the missing-reading marker and the tolerances. It is fully decided and never
+contains an `#error`. `contract_runtime.h` holds product settings that are
+decided later.
 
-Fusing them means the seam cannot be tested until every product threshold is
-frozen, which is backwards: the seam is what you want pinned **first**.
-Keeping them apart is why the golden test runs today with
-`DETECTION_THRESHOLD` still open. `features.c` includes only
-`contract_data.h`.
+`features.c` includes only `contract_data.h`, so the golden test builds and
+runs from the first day, while the thresholds are still undecided. Only the
+parts of the firmware that act on product settings should include
+`contract_runtime.h`. This repository contains no device firmware, so nothing
+here includes it yet.
 
----
-
-## Proof it works
-
-A test suite that has never failed is decoration. You cannot tell a working
-golden test from a vacuous one by reading it — both print the same thing.
+## The tools must run in order
 
 ```bash
-python sabotage.py
+python data_contract.py       # 1. generate the contract files
+python gen_golden.py          # 2. generate golden vectors from them
+make run                      # 3. check the C code reproduces them
+python test_contract.py       # 4. check the Python code does too
 ```
 
-Breaks `features.c` ten ways, rebuilds, confirms the golden test **fails**
-each time, and restores the original. Every sabotage is a line a competent
-engineer might write on a Tuesday:
+Step 2 imports the Python file that step 1 generates, and records the
+contract's hash in both golden vector files. Whenever the contract changes,
+run both steps again; `make generate` does exactly that.
 
-```
-  ddof                CAUGHT    22 failures | alternating, ramp, impulse, negative, realistic
-  layout              CAUGHT    72 failures | channel_distinct, scale_split, ...
-  sentinel_zero       CAUGHT     4 failures | all_missing
-  sentinel_included   CAUGHT    22 failures | some_missing, all_missing
-  scale_swap          CAUGHT    90 failures | channel_distinct, scale_split, ...
-  channel_swap        CAUGHT    30 failures | channel_distinct, scale_split, ...
-  minmax_swap         CAUGHT    60 failures | alternating, ramp, impulse, ...
-  minmax_init_zero    CAUGHT    38 failures | channel_distinct, scale_split, ...
-  off_by_one          CAUGHT    46 failures | alternating, ramp, impulse, ...
-  scale_after_stats   CAUGHT    11 failures | channel_distinct, scale_split, ...
+If step 2 is forgotten, `python gen_golden.py --check` and the Python tests
+report the mismatch, and the C test refuses to run, printing both hashes.
+`make check` runs every check in the right order.
 
-  10/10 sabotages detected
-```
+## Generated files
 
-The scene attribution is the useful part. `sentinel_zero` is caught by
-exactly one scene — so `all_missing` is load-bearing, not decorative. Delete
-it and that bug becomes invisible.
+Five files are generated. **Never edit them by hand, but do commit them.**
+The `--check` command compares the committed files with what the contract
+produces now, so if they are not in the repository, there is nothing to
+compare against. Committing them also means that a reviewer sees exactly
+which values changed, in both languages, whenever the contract changes.
 
-If a sabotage is ever reported as `MISSED`, that is a real bug the vectors
-cannot see, and the fix is a new scene.
-
----
-
-## Run order is a dependency chain
-
-```bash
-python data_contract.py       # 1. must be first
-python gen_golden.py          # 2. imports what step 1 generated
-make run                      # 3. the C side proves it agrees
-python test_contract.py       # 4. the Python side proves it too
-```
-
-Step 2 **imports** step 1's output and stamps the contract hash into both
-golden files. Change `data_contract.py` and you must re-run both. Forget, and
-`test_golden_was_generated_against_this_contract` fails with the two hashes
-side by side — because **golden vectors certifying agreement on a seam that
-has since moved are worse than none.**
-
----
-
-## Generated vs hand-written
-
-**Five files are generated. Never edit them.** Commit them anyway — do not
-gitignore them. They are committed precisely so drift shows up as a diff in a
-pull request. That is the entire mechanism.
-
-| Generated | By |
+| Generated file | Generated by |
 |---|---|
 | `contract.py` | `data_contract.py` |
 | `contract_data.h` | `data_contract.py` |
@@ -229,37 +223,43 @@ pull request. That is the entire mechanism.
 | `golden_vectors.json` | `gen_golden.py` |
 | `golden_vectors.h` | `gen_golden.py` |
 
-Everything else is hand-written: `data_contract.py`, `features.py`,
+Everything else is written by hand: `data_contract.py`, `features.py`,
 `features.c`, `features.h`, `gen_golden.py`, `test_golden.c`,
-`test_contract.py`, `sabotage.py`, `Makefile`.
-
----
+`test_contract.py`, `sabotage.py` and `Makefile`.
 
 ## What this does not do
 
-- **It does not check your data is good.** A perfectly pinned seam happily
-  carries a terrible dataset.
-- **It does not check your model is good.** No model here, deliberately.
-- **It does not make the C fast.** `features.c` is written for clarity.
+- **It does not check that your data is good.** The checks make sure both
+  sides process data the same way, and will carry a poor dataset through
+  just as faithfully.
+- **It does not check that your model is good.** There is no model here, on
+  purpose.
+- **It does not make the C code fast.** `features.c` is written to be easy
+  to read. If you optimise it, the golden vectors tell you immediately if a
+  result changed.
 
----
+## Adapting it to your project
 
-## Adapting it
+The example uses a six-channel motion sensor with four statistics per
+channel, but nothing in the approach depends on that. Change `CHANNELS` and
+`STATS` in the contract and the feature functions in `features.py` and
+`features.c`, then write scenes that target the mistakes your own functions
+could realistically contain.
 
-The example is a six-channel IMU windowed into four statistics per channel,
-but nothing about the machinery is IMU-specific. Change `CHANNELS`, `STATS`
-and the body of `extract_features` / `features_extract`, then write scenes
-that break *your* function in the ways it can actually break.
+Things worth checking in almost any project that trains in one language and
+runs in another:
 
-The generic catalogue of things that silently disagree across a seam:
-
-- channel order, when firmware fills a buffer in loop order
-- units and scaling — raw ticks against physical units
-- sentinels for absent data, where a zeroed struct hands you `0`
-- quantization scale and zero-point for int8 models
-- normalization statistics baked in at training time
-- window length, stride, overlap
-- `ddof` — numpy defaults to 0, pandas to 1
-- float64 in training, float32 on device
-- feature layout, `[channel][stat]` against `[stat][channel]`
-- struct packing and endianness on the wire
+- the order of the sensor channels, especially when firmware fills a buffer
+  in whatever order a loop reads the sensors
+- units and scaling, from raw sensor readings to real units
+- the marker for a missing reading, particularly when a cleared buffer
+  supplies zeros
+- quantisation scale and zero point, for models that run on 8-bit integers
+- normalisation values calculated during training
+- window length, step and overlap
+- the standard deviation formula, where numpy and pandas use different
+  defaults
+- 64-bit numbers in training against 32-bit numbers on the device
+- the order in which features are placed in the model's input
+- how data structures are packed in memory and the byte order of data sent
+  between devices

@@ -26,7 +26,7 @@ venv/
 Thumbs.db
 
 # ---------------------------------------------------------------------------
-# DELIBERATELY NOT IGNORED: the generated contract and golden vector files.
+# NOT IGNORED ON PURPOSE: the generated contract and golden vector files.
 #
 #   01-contract/contract.py
 #   01-contract/contract_data.h
@@ -34,8 +34,9 @@ Thumbs.db
 #   01-contract/golden_vectors.json
 #   01-contract/golden_vectors.h
 #
-# They are committed precisely so that a drift shows up as a diff in a pull
-# request. That is the entire mechanism. Gitignoring generated artifacts is
-# the instinct to resist here -- if they are not in the repo, `--check` has
-# nothing to compare against and the whole level-1 defence evaporates.
+# These are committed so that any change to them shows up in a pull request.
+# Most projects leave generated files out of version control, but here that
+# would break the check: `python data_contract.py --check` compares these
+# committed files with what the contract produces now, so without them it
+# has nothing to compare against and stops protecting you.
 # ---------------------------------------------------------------------------

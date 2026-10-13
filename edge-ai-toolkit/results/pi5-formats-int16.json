@@ -1,0 +1,510 @@
+{
+  "environment": {
+    "model": "Raspberry Pi 5 Model B Rev 1.0",
+    "machine": "aarch64",
+    "cores": 4,
+    "memory": "7.9 GiB",
+    "os": "Linux 6.12.62+rpt-rpi-2712",
+    "distro": "Debian GNU/Linux 12 (bookworm)",
+    "python": "3.11.2",
+    "storage": "/dev/mmcblk0p2 [SD/eMMC SN32G]",
+    "packages": {
+      "numpy": {
+        "version": "2.4.6",
+        "mib": 66.6
+      },
+      "pandas": {
+        "version": "3.0.6",
+        "mib": 71.3
+      },
+      "pyarrow": {
+        "version": "26.0.0",
+        "mib": 150.8
+      },
+      "h5py": {
+        "version": "3.16.0",
+        "mib": 21.6
+      },
+      "duckdb": {
+        "version": "1.5.6",
+        "mib": 53.1
+      }
+    },
+    "thermal_before": {
+      "temp": "57.1'C",
+      "throttled": "0x0",
+      "throttled_meaning": "clean"
+    },
+    "thermal_after": {
+      "temp": "56.5'C",
+      "throttled": "0x0",
+      "throttled_meaning": "clean"
+    }
+  },
+  "dataset": {
+    "rows": 2400000,
+    "columns": 10,
+    "sessions": 400,
+    "subjects": 12,
+    "in_memory_bytes": 60000132,
+    "in_memory_mib": 57.2,
+    "dtypes": {
+      "t_ms": "int64",
+      "session": "int16",
+      "subject": "int16",
+      "label": "int8",
+      "ax": "int16",
+      "ay": "int16",
+      "az": "int16",
+      "gx": "int16",
+      "gy": "int16",
+      "gz": "int16"
+    }
+  },
+  "args": {
+    "sessions": 400,
+    "seconds": 120,
+    "rate_hz": 50,
+    "repeat": 5,
+    "only": null,
+    "skip": [],
+    "raw_ticks": true,
+    "tmpdir": null,
+    "json": "../results/pi5-formats-int16.json",
+    "worker": null,
+    "path": null,
+    "declared": null
+  },
+  "results": [
+    {
+      "format": "csv",
+      "write_s": 10.74538110702997,
+      "write_s_all": [
+        11.032946616993286,
+        11.701836929947603,
+        10.715066089993343,
+        10.74538110702997,
+        10.536953555012587
+      ],
+      "bytes": 106447598,
+      "read_s": 2.3351433660136536,
+      "read_s_all": [
+        2.356417354021687,
+        2.340066161006689,
+        2.3351433660136536,
+        2.2917254000203684,
+        2.2904290789738297
+      ],
+      "rss_baseline_mib": 95.234375,
+      "rss_peak_mib": 674.4375,
+      "rss_delta_mib": 579.203125,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int64",
+          "subject": "int64",
+          "label": "int64",
+          "ax": "int64",
+          "ay": "int64",
+          "az": "int64",
+          "gx": "int64",
+          "gy": "int64",
+          "gz": "int64"
+        },
+        "changed": [
+          "session: int16 -> int64",
+          "subject: int16 -> int64",
+          "label: int8 -> int64",
+          "ax: int16 -> int64",
+          "ay: int16 -> int64",
+          "az: int16 -> int64",
+          "gx: int16 -> int64",
+          "gy: int16 -> int64",
+          "gz: int16 -> int64"
+        ],
+        "exact": false
+      }
+    },
+    {
+      "format": "csv.gz",
+      "write_s": 31.843945714994334,
+      "write_s_all": [
+        32.094488534959964,
+        31.843945714994334,
+        31.623816112987697,
+        32.466251125966664,
+        31.752905861998443
+      ],
+      "bytes": 34992028,
+      "read_s": 2.545253499993123,
+      "read_s_all": [
+        2.572289825999178,
+        2.545253499993123,
+        2.58039804402506,
+        2.499495978001505,
+        2.4943201550049707
+      ],
+      "rss_baseline_mib": 95.25,
+      "rss_peak_mib": 674.359375,
+      "rss_delta_mib": 579.109375,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int64",
+          "subject": "int64",
+          "label": "int64",
+          "ax": "int64",
+          "ay": "int64",
+          "az": "int64",
+          "gx": "int64",
+          "gy": "int64",
+          "gz": "int64"
+        },
+        "changed": [
+          "session: int16 -> int64",
+          "subject: int16 -> int64",
+          "label: int8 -> int64",
+          "ax: int16 -> int64",
+          "ay: int16 -> int64",
+          "az: int16 -> int64",
+          "gx: int16 -> int64",
+          "gy: int16 -> int64",
+          "gz: int16 -> int64"
+        ],
+        "exact": false
+      }
+    },
+    {
+      "format": "json",
+      "write_s": 12.551926570944488,
+      "write_s_all": [
+        11.0115421989467,
+        11.637502929021139,
+        12.786071072972845,
+        12.551926570944488,
+        13.528172280988656
+      ],
+      "bytes": 267247553,
+      "read_s": 16.59636553400196,
+      "read_s_all": [
+        16.59636553400196,
+        16.685165570001118,
+        16.322853330988437,
+        16.64631915697828,
+        16.535224578983616
+      ],
+      "rss_baseline_mib": 95.234375,
+      "rss_peak_mib": 4233.703125,
+      "rss_delta_mib": 4138.46875,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int64",
+          "subject": "int64",
+          "label": "int64",
+          "ax": "int64",
+          "ay": "int64",
+          "az": "int64",
+          "gx": "int64",
+          "gy": "int64",
+          "gz": "int64"
+        },
+        "changed": [
+          "session: int16 -> int64",
+          "subject: int16 -> int64",
+          "label: int8 -> int64",
+          "ax: int16 -> int64",
+          "ay: int16 -> int64",
+          "az: int16 -> int64",
+          "gx: int16 -> int64",
+          "gy: int16 -> int64",
+          "gz: int16 -> int64"
+        ],
+        "exact": false
+      }
+    },
+    {
+      "format": "pickle",
+      "write_s": 1.331809555995278,
+      "write_s_all": [
+        1.331809555995278,
+        1.209883028990589,
+        1.5196732240146957,
+        1.4341763919801451,
+        1.1453584880218841
+      ],
+      "bytes": 60001159,
+      "read_s": 0.6377568489988334,
+      "read_s_all": [
+        0.640580878010951,
+        0.6395513190072961,
+        0.6377081429818645,
+        0.6337210880010389,
+        0.6377568489988334
+      ],
+      "rss_baseline_mib": 95.25,
+      "rss_peak_mib": 209.109375,
+      "rss_delta_mib": 113.859375,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "int16",
+          "ay": "int16",
+          "az": "int16",
+          "gx": "int16",
+          "gy": "int16",
+          "gz": "int16"
+        },
+        "changed": [],
+        "exact": true
+      }
+    },
+    {
+      "format": "npz",
+      "write_s": 3.8263457950088196,
+      "write_s_all": [
+        3.8263457950088196,
+        3.7336874490138143,
+        4.30157309101196,
+        3.8448501160019077,
+        3.8261202750145458
+      ],
+      "bytes": 24549209,
+      "read_s": 0.4130187099799514,
+      "read_s_all": [
+        0.4537696280167438,
+        0.41651398496469483,
+        0.4121962049975991,
+        0.40268960304092616,
+        0.4130187099799514
+      ],
+      "rss_baseline_mib": 95.203125,
+      "rss_peak_mib": 348.046875,
+      "rss_delta_mib": 252.84375,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "int16",
+          "ay": "int16",
+          "az": "int16",
+          "gx": "int16",
+          "gy": "int16",
+          "gz": "int16"
+        },
+        "changed": [],
+        "exact": true
+      }
+    },
+    {
+      "format": "hdf5",
+      "write_s": 1.837980552983936,
+      "write_s_all": [
+        1.8544051210046746,
+        1.7959972879616544,
+        1.837980552983936,
+        1.807819024019409,
+        1.8391424779547378
+      ],
+      "bytes": 24671122,
+      "read_s": 0.44119037297787145,
+      "read_s_all": [
+        0.4747741669998504,
+        0.4428536220220849,
+        0.44119037297787145,
+        0.4347337319632061,
+        0.4410969110322185
+      ],
+      "rss_baseline_mib": 95.234375,
+      "rss_peak_mib": 366.296875,
+      "rss_delta_mib": 271.0625,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "int16",
+          "ay": "int16",
+          "az": "int16",
+          "gx": "int16",
+          "gy": "int16",
+          "gz": "int16"
+        },
+        "changed": [],
+        "exact": true
+      }
+    },
+    {
+      "format": "parquet-none",
+      "write_s": 1.5479254549718462,
+      "write_s_all": [
+        1.7436056570149958,
+        1.787641802977305,
+        1.173546344973147,
+        1.5479254549718462,
+        1.323148082010448
+      ],
+      "bytes": 32878772,
+      "read_s": 0.4651356840040535,
+      "read_s_all": [
+        0.48816659301519394,
+        0.46488684898940846,
+        0.4651356840040535,
+        0.4669918229919858,
+        0.45113944995682687
+      ],
+      "rss_baseline_mib": 95.25,
+      "rss_peak_mib": 427.359375,
+      "rss_delta_mib": 332.109375,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "int16",
+          "ay": "int16",
+          "az": "int16",
+          "gx": "int16",
+          "gy": "int16",
+          "gz": "int16"
+        },
+        "changed": [],
+        "exact": true
+      }
+    },
+    {
+      "format": "parquet-snappy",
+      "write_s": 1.2383672349969856,
+      "write_s_all": [
+        1.1749437359976582,
+        1.2383672349969856,
+        1.243091557000298,
+        1.1701195160276257,
+        1.3453368789632805
+      ],
+      "bytes": 32670172,
+      "read_s": 0.46043476095655933,
+      "read_s_all": [
+        0.5019583529792726,
+        0.47751336300279945,
+        0.46043476095655933,
+        0.4546285839751363,
+        0.45190812699729577
+      ],
+      "rss_baseline_mib": 95.25,
+      "rss_peak_mib": 386.15625,
+      "rss_delta_mib": 290.90625,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "int16",
+          "ay": "int16",
+          "az": "int16",
+          "gx": "int16",
+          "gy": "int16",
+          "gz": "int16"
+        },
+        "changed": [],
+        "exact": true
+      }
+    },
+    {
+      "format": "parquet-zstd",
+      "write_s": 1.5054689600365236,
+      "write_s_all": [
+        1.2912458259961568,
+        1.1888157329522073,
+        1.5054689600365236,
+        1.7454955899738707,
+        1.5664223600178957
+      ],
+      "bytes": 27997590,
+      "read_s": 0.42687778995605186,
+      "read_s_all": [
+        0.4536196049884893,
+        0.4160487900371663,
+        0.4201902920030989,
+        0.45386853301897645,
+        0.42687778995605186
+      ],
+      "rss_baseline_mib": 95.234375,
+      "rss_peak_mib": 411.40625,
+      "rss_delta_mib": 316.171875,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "int16",
+          "ay": "int16",
+          "az": "int16",
+          "gx": "int16",
+          "gy": "int16",
+          "gz": "int16"
+        },
+        "changed": [],
+        "exact": true
+      }
+    },
+    {
+      "format": "feather-zstd",
+      "write_s": 0.712137270020321,
+      "write_s_all": [
+        0.712137270020321,
+        0.9629648039699532,
+        0.4516538020106964,
+        0.9819821220007725,
+        0.5588788880268112
+      ],
+      "bytes": 24377274,
+      "read_s": 0.2933288930216804,
+      "read_s_all": [
+        0.29308640997624025,
+        0.2933636329835281,
+        0.29000283899949864,
+        0.2933288930216804,
+        0.30492182000307366
+      ],
+      "rss_baseline_mib": 95.25,
+      "rss_peak_mib": 331.953125,
+      "rss_delta_mib": 236.703125,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "int16",
+          "ay": "int16",
+          "az": "int16",
+          "gx": "int16",
+          "gy": "int16",
+          "gz": "int16"
+        },
+        "changed": [],
+        "exact": true
+      }
+    }
+  ]
+}

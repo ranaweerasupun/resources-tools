@@ -1,0 +1,16 @@
+# Versions used for every result in the Edge AI Lab Notes series, measured
+# with Python 3.11 on a Raspberry Pi 5. Install with:
+#
+#     pip install -r requirements.txt
+#
+# h5py is only needed for the HDF5 entry in the Part 2 benchmark, and duckdb
+# only for Part 3. The format benchmark skips a format whose library is
+# missing instead of failing.
+#
+# Part 1 also needs a C compiler and make, which pip cannot install.
+
+numpy==2.4.6
+pandas==3.0.6
+pyarrow==26.0.0
+h5py==3.16.0
+duckdb==1.5.6

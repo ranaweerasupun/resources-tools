@@ -1,0 +1,94 @@
+# CI for edge-ai-toolkit, the companion code for the Edge AI Lab Notes series.
+#
+# This file belongs in the repository root, at .github/workflows/, because
+# GitHub only reads workflows from there. Every step runs inside the
+# edge-ai-toolkit folder.
+#
+# Part 1 runs the full set of contract checks and the sabotage script, so a
+# change that lets Python and C drift apart, or that blinds the golden test,
+# fails the build. Parts 2 and 3 run every demo and a small version of each
+# benchmark, to confirm the code still works with the pinned libraries. The
+# benchmark timings from a CI runner are not meaningful and are not kept.
+
+name: edge-ai-toolkit
+
+on:
+  push:
+    paths:
+      - "edge-ai-toolkit/**"
+      - ".github/workflows/edge-ai-toolkit.yml"
+  pull_request:
+    paths:
+      - "edge-ai-toolkit/**"
+      - ".github/workflows/edge-ai-toolkit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: edge-ai-toolkit-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: edge-ai-toolkit
+
+jobs:
+  contract:
+    name: "Part 1: data contract checks"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: edge-ai-toolkit/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check generated files, golden vectors, and both languages
+        working-directory: edge-ai-toolkit/01-contract
+        run: make check
+
+      - name: Break the C code ten ways and confirm each is caught
+        working-directory: edge-ai-toolkit/01-contract
+        run: python sabotage.py
+
+      - name: Confirm sabotage.py restored every file
+        run: git diff --exit-code
+
+  data:
+    name: "Parts 2 and 3: demos and quick benchmarks"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: edge-ai-toolkit/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: "Part 2: Parquet demos"
+        run: python 02-formats/parquet_howto.py
+
+      - name: "Part 2: quick format benchmark"
+        run: python 02-formats/bench_formats.py --sessions 10 --repeat 1
+
+      - name: "Part 3: DuckDB demos"
+        run: python 03-duckdb/duckdb_howto.py
+
+      - name: "Part 3: quick DuckDB benchmark, engines must agree"
+        run: python 03-duckdb/bench_duckdb.py --rows 60000 --repeat 1
+
+      - name: "Part 3: quick memory sweep"
+        run: python 03-duckdb/bench_duckdb.py --rows 60000 --repeat 1 --scaling

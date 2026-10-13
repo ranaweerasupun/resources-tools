@@ -1,0 +1,205 @@
+  pyarrow 26.0.0   pandas 3.0.6
+
+==========================================================================
+  1. Writing, and checking the schema came back
+==========================================================================
+  Declare dtypes deliberately. Then verify -- do not assume.
+
+  120,000 rows, 4.2 MiB in memory
+
+  column    declared   parquet    csv
+  --------------------------------------------
+  t_ms      int64      int64      int64
+  session   int16      int16      int64  <- widened
+  subject   int16      int16      int64  <- widened
+  label     int8       int8       int64  <- widened
+  ax        float32    float32    float64  <- widened
+  ay        float32    float32    float64  <- widened
+  az        float32    float32    float64  <- widened
+  gx        float32    float32    float64  <- widened
+  gy        float32    float32    float64  <- widened
+  gz        float32    float32    float64  <- widened
+
+  parquet    1.6 MiB   csv    8.7 MiB
+  csv round-trip in RAM: 9.2 MiB vs 4.2 MiB for parquet
+
+  The CSV holds the same VALUES. It does not hold the same
+  TABLE -- every width you chose was thrown away and guessed
+  again on read.
+
+==========================================================================
+  2. Inspecting a file without opening the data
+==========================================================================
+  The footer is the point. You can audit a file you did not write.
+
+  file 13.5 MiB, 1,200,000 rows
+
+  read_schema + read_metadata :      0.6 ms
+  read the whole table        :     67.0 ms
+  ratio                       :      105x
+
+  schema:
+    t_ms       int64
+    session    int16
+    subject    int16
+    label      int8
+    ax         float
+    ay         float
+    az         float
+    gx         float
+    gy         float
+    gz         float
+
+  row groups: 2   created by: parquet-cpp-arrow version 26.0.0
+
+  Compare with a pickle: to learn what is inside one, you have
+  to unpickle it, and unpickling runs whatever it says to run.
+
+==========================================================================
+  3. What Parquet does before any compression
+==========================================================================
+  Dictionary and run-length encoding, per column, in the file itself.
+
+  360,000 rows, 12.7 MiB in memory
+  on disk with NO compression codec: 5.0 MiB
+
+  column    physical    distinct  uncompressed  dict?
+  -----------------------------------------------------
+  t_ms      INT64          6,000         620 K    yes
+  session   INT32             60           1 K    yes
+  subject   INT32             12           1 K    yes
+  label     INT32              2           1 K    yes
+  ax        FLOAT         33,016         763 K    yes
+  ay        FLOAT         31,954         753 K    yes
+  az        FLOAT         32,111         729 K    yes
+  gx        FLOAT         27,486         739 K    yes
+  gy        FLOAT         30,015         745 K    yes
+  gz        FLOAT         30,305         740 K    yes
+
+  'session' repeats for thousands of consecutive rows, so it
+  costs almost nothing. The channels hold a few tens of thousands
+  of distinct values out of millions of samples, because the ADC
+  quantised them -- so they dictionary-encode too.
+
+  Note the physical types. Parquet has no 16-bit type: int16 is
+  stored as INT32 with a logical annotation. That is why storing
+  raw int16 ticks instead of scaled float32 saves ~22% in every
+  other format and ~0% here.
+
+==========================================================================
+  4. Row groups: the unit of skipping
+==========================================================================
+  Footer statistics let a reader skip a block without decoding it.
+
+  1,200,000 rows
+
+    row_group_size   groups     MiB   read all  read 1 col
+  --------------------------------------------------------
+           default        2    13.5       48ms         9ms
+           200,000        6    15.4       58ms        12ms
+            50,000       24    18.2       56ms        16ms
+
+  The default is 1,048,576 rows, which for a table this size
+  gives one large group and one small remainder. Smaller groups
+  mean finer skipping and more metadata; larger groups compress
+  slightly better. Tune it only if you have a reason.
+
+  Reading one column out of ten is the free win. It costs a
+  fraction of the full read because the other nine columns are
+  never touched -- that is what 'columnar' buys you day to day.
+
+==========================================================================
+  5. Footer statistics: sorted data can be skipped
+==========================================================================
+  How many row groups must a reader actually touch?
+
+  sorted by session
+    row group 0: session    0 ..   16
+    row group 1: session   16 ..   33
+    row group 2: session   33 ..   49
+    ... 5 more
+    -> WHERE session = 42 must open 1 of 8 row groups (12%)
+
+  shuffled
+    row group 0: session    0 ..  119
+    row group 1: session    0 ..  119
+    row group 2: session    0 ..  119
+    ... 5 more
+    -> WHERE session = 42 must open 8 of 8 row groups (100%)
+
+  Same data, same size, same format. The only difference is the
+  order it was written in.
+
+  Sort your canonical table by whatever you filter on most --
+  session, subject, time. It costs one sort at write time and it
+  is what makes a query over a folder of files fast later.
+
+==========================================================================
+  6. Partitioning by the split key
+==========================================================================
+  Make an honest train/test split structural instead of remembered.
+
+  canonical/
+    subject=0/   1 file(s), 535 KiB
+    subject=1/   1 file(s), 620 KiB
+    subject=10/   1 file(s), 627 KiB
+    subject=11/   1 file(s), 749 KiB
+    ... 8 more
+
+  holding out subject 3:
+    train  330,000 rows, 11 subjects
+    test    30,000 rows, 1 subjects
+    disjoint: True
+
+  The partition column is stored in the PATH, not in the file.
+  It costs zero bytes, and a reader that filters on it skips
+  whole directories without opening them.
+
+  This is the same idea as generating both sides of a contract:
+  the guarantee is structural, not something anyone has to
+  remember to check.
+
+==========================================================================
+  7. You cannot append. Write many, then compact.
+==========================================================================
+  The footer is written last, so a Parquet file is finished when closed.
+
+  120 small files :   7.40 MiB   write  1008 ms   read    81 ms
+  1 compacted file :   4.26 MiB   compact   153 ms   read    19 ms
+
+  overhead of not compacting: 1.74x the bytes, 4.2x the read time
+
+  Each file carries its own footer, dictionary pages and row
+  group metadata. Split the same data finely enough and that
+  fixed cost dominates, and the dictionaries stop being shared.
+
+  The practical shape: buffer live data somewhere mutable
+  (SQLite, a log file), roll up to Parquet on a schedule, and
+  compact the rollups periodically.
+
+==========================================================================
+  8. The pickle problem
+==========================================================================
+  Pickle preserves your dtypes perfectly. That is not the objection.
+
+  innocent_looking.pkl is 88 bytes. It looks like data.
+  Loading it with pandas.read_pickle:
+
+  >> arbitrary code ran while loading
+
+  Unpickling is not parsing. It is executing a small program
+  that reconstructs an object, and that program can do anything
+  the process can do.
+
+  Two further problems, less dramatic and more likely to bite:
+    - a pickle written by one pandas or numpy version may not
+      load under another
+    - there is no schema to inspect without loading it, so you
+      cannot audit a file before trusting it
+
+  For data that never leaves your process, none of this
+  matters. For a canonical table that outlives the code that
+  wrote it, all of it does.
+
+==========================================================================
+  8 demo(s) complete

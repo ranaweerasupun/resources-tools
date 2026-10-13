@@ -1,0 +1,161 @@
+{
+  "environment": {
+    "model": "Raspberry Pi 5 Model B Rev 1.0",
+    "machine": "aarch64",
+    "cores": 4,
+    "memory": "7.9 GiB",
+    "os": "Linux 6.12.62+rpt-rpi-2712",
+    "distro": "Debian GNU/Linux 12 (bookworm)",
+    "python": "3.11.2",
+    "storage": "/dev/mmcblk0p2 [SD/eMMC SN32G]",
+    "packages": {
+      "numpy": {
+        "version": "2.4.6",
+        "mib": 66.6
+      },
+      "pandas": {
+        "version": "3.0.6",
+        "mib": 71.3
+      },
+      "pyarrow": {
+        "version": "26.0.0",
+        "mib": 150.8
+      },
+      "h5py": {
+        "version": "3.16.0",
+        "mib": 21.6
+      },
+      "duckdb": {
+        "version": "1.5.6",
+        "mib": 53.1
+      }
+    },
+    "thermal_before": {
+      "temp": "51.6'C",
+      "throttled": "0x0",
+      "throttled_meaning": "clean"
+    },
+    "thermal_after": {
+      "temp": "52.1'C",
+      "throttled": "0x0",
+      "throttled_meaning": "clean"
+    }
+  },
+  "duckdb_version": "1.5.6",
+  "mode": "scaling",
+  "args": {
+    "rows": 1200000,
+    "repeat": 5,
+    "only": null,
+    "memory_limit": null,
+    "scaling": true,
+    "tmpdir": null,
+    "json": "../results/pi5-duckdb-scaling.json",
+    "list": false,
+    "worker": null,
+    "engine": null,
+    "ws": null
+  },
+  "results": [
+    {
+      "rows": 300000,
+      "pandas": {
+        "seconds": 0.07981009900686331,
+        "all": [
+          0.08297208201838657,
+          0.07664811599534005
+        ],
+        "peak_rss_mib": 140.046875,
+        "rss_baseline_mib": 101.28125,
+        "rss_delta_mib": 38.765625,
+        "result": 42.715492248535156
+      },
+      "duckdb": {
+        "seconds": 0.054105944494949654,
+        "all": [
+          0.049497586966026574,
+          0.05871430202387273
+        ],
+        "peak_rss_mib": 143.1875,
+        "rss_baseline_mib": 134.5,
+        "rss_delta_mib": 8.6875,
+        "result": 42.715491918813605
+      }
+    },
+    {
+      "rows": 600000,
+      "pandas": {
+        "seconds": 0.12411548700765707,
+        "all": [
+          0.13579845597269014,
+          0.112432518042624
+        ],
+        "peak_rss_mib": 165.796875,
+        "rss_baseline_mib": 101.296875,
+        "rss_delta_mib": 64.5,
+        "result": 50.03797149658203
+      },
+      "duckdb": {
+        "seconds": 0.08117007199325599,
+        "all": [
+          0.07915046997368336,
+          0.08318967401282862
+        ],
+        "peak_rss_mib": 142.125,
+        "rss_baseline_mib": 134.515625,
+        "rss_delta_mib": 7.609375,
+        "result": 50.03796954764583
+      }
+    },
+    {
+      "rows": 1200000,
+      "pandas": {
+        "seconds": 0.2146314539713785,
+        "all": [
+          0.22403135598869994,
+          0.20523155195405707
+        ],
+        "peak_rss_mib": 215.984375,
+        "rss_baseline_mib": 101.296875,
+        "rss_delta_mib": 114.6875,
+        "result": 54.169593811035156
+      },
+      "duckdb": {
+        "seconds": 0.13365094998152927,
+        "all": [
+          0.13617165898904204,
+          0.1311302409740165
+        ],
+        "peak_rss_mib": 144.765625,
+        "rss_baseline_mib": 134.515625,
+        "rss_delta_mib": 10.25,
+        "result": 54.16959676572601
+      }
+    },
+    {
+      "rows": 2400000,
+      "pandas": {
+        "seconds": 0.40846878447337076,
+        "all": [
+          0.41776394395856187,
+          0.39917362498817965
+        ],
+        "peak_rss_mib": 283.546875,
+        "rss_baseline_mib": 101.28125,
+        "rss_delta_mib": 182.265625,
+        "result": 56.250858306884766
+      },
+      "duckdb": {
+        "seconds": 0.1856001560227014,
+        "all": [
+          0.18612093903357163,
+          0.1850793730118312
+        ],
+        "peak_rss_mib": 149.140625,
+        "rss_baseline_mib": 134.5,
+        "rss_delta_mib": 14.640625,
+        "result": 56.250858375009365
+      }
+    }
+  ]
+}

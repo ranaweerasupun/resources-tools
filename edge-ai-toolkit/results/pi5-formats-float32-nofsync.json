@@ -1,0 +1,511 @@
+{
+  "environment": {
+    "model": "Raspberry Pi 5 Model B Rev 1.0",
+    "machine": "aarch64",
+    "cores": 4,
+    "memory": "7.9 GiB",
+    "os": "Linux 6.12.62+rpt-rpi-2712",
+    "distro": "Debian GNU/Linux 12 (bookworm)",
+    "python": "3.11.2",
+    "storage": "/dev/mmcblk0p2 [SD/eMMC SN32G]",
+    "packages": {
+      "numpy": {
+        "version": "2.4.6",
+        "mib": 66.6
+      },
+      "pandas": {
+        "version": "3.0.6",
+        "mib": 71.3
+      },
+      "pyarrow": {
+        "version": "26.0.0",
+        "mib": 150.8
+      },
+      "h5py": {
+        "version": "3.16.0",
+        "mib": 21.6
+      },
+      "duckdb": {
+        "version": "1.5.6",
+        "mib": 53.1
+      }
+    },
+    "thermal_before": {
+      "temp": "50.5'C",
+      "throttled": "0x0",
+      "throttled_meaning": "clean"
+    },
+    "thermal_after": {
+      "temp": "56.5'C",
+      "throttled": "0x0",
+      "throttled_meaning": "clean"
+    }
+  },
+  "dataset": {
+    "rows": 2400000,
+    "columns": 10,
+    "sessions": 400,
+    "subjects": 12,
+    "in_memory_bytes": 88800132,
+    "in_memory_mib": 84.7,
+    "dtypes": {
+      "t_ms": "int64",
+      "session": "int16",
+      "subject": "int16",
+      "label": "int8",
+      "ax": "float32",
+      "ay": "float32",
+      "az": "float32",
+      "gx": "float32",
+      "gy": "float32",
+      "gz": "float32"
+    }
+  },
+  "args": {
+    "sessions": 400,
+    "seconds": 120,
+    "rate_hz": 50,
+    "repeat": 5,
+    "only": null,
+    "skip": [],
+    "raw_ticks": false,
+    "tmpdir": null,
+    "json": "../results/pi5-formats-float32-nofsync.json",
+    "no_fsync": true,
+    "worker": null,
+    "path": null,
+    "declared": null
+  },
+  "results": [
+    {
+      "format": "csv",
+      "write_s": 25.49289560096804,
+      "write_s_all": [
+        25.563461854995694,
+        25.546322523034178,
+        25.49103135097539,
+        25.49289560096804,
+        25.470765087986365
+      ],
+      "bytes": 184618020,
+      "read_s": 3.276949090999551,
+      "read_s_all": [
+        3.276949090999551,
+        3.3426114519825205,
+        3.3189261030056514,
+        3.2628332750173286,
+        3.233622699044645
+      ],
+      "rss_baseline_mib": 95.328125,
+      "rss_peak_mib": 684.609375,
+      "rss_delta_mib": 589.28125,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int64",
+          "subject": "int64",
+          "label": "int64",
+          "ax": "float64",
+          "ay": "float64",
+          "az": "float64",
+          "gx": "float64",
+          "gy": "float64",
+          "gz": "float64"
+        },
+        "changed": [
+          "session: int16 -> int64",
+          "subject: int16 -> int64",
+          "label: int8 -> int64",
+          "ax: float32 -> float64",
+          "ay: float32 -> float64",
+          "az: float32 -> float64",
+          "gx: float32 -> float64",
+          "gy: float32 -> float64",
+          "gz: float32 -> float64"
+        ],
+        "exact": false
+      }
+    },
+    {
+      "format": "csv.gz",
+      "write_s": 45.35692134097917,
+      "write_s_all": [
+        45.26106967497617,
+        45.35692134097917,
+        45.102895555028226,
+        45.50947686401196,
+        45.69443058199249
+      ],
+      "bytes": 51115731,
+      "read_s": 3.4622004849952646,
+      "read_s_all": [
+        3.531220913049765,
+        3.4779006299795583,
+        3.4622004849952646,
+        3.4422634879592806,
+        3.409311252005864
+      ],
+      "rss_baseline_mib": 95.328125,
+      "rss_peak_mib": 671.296875,
+      "rss_delta_mib": 575.96875,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int64",
+          "subject": "int64",
+          "label": "int64",
+          "ax": "float64",
+          "ay": "float64",
+          "az": "float64",
+          "gx": "float64",
+          "gy": "float64",
+          "gz": "float64"
+        },
+        "changed": [
+          "session: int16 -> int64",
+          "subject: int16 -> int64",
+          "label: int8 -> int64",
+          "ax: float32 -> float64",
+          "ay: float32 -> float64",
+          "az: float32 -> float64",
+          "gx: float32 -> float64",
+          "gy: float32 -> float64",
+          "gz: float32 -> float64"
+        ],
+        "exact": false
+      }
+    },
+    {
+      "format": "json",
+      "write_s": 7.422001547995023,
+      "write_s_all": [
+        7.390241589979269,
+        7.378583485027775,
+        7.432234484993387,
+        7.4268002370372415,
+        7.422001547995023
+      ],
+      "bytes": 389459730,
+      "read_s": 17.414196858007926,
+      "read_s_all": [
+        17.551259800966363,
+        17.414196858007926,
+        17.55956486199284,
+        17.224732959992252,
+        17.367465286981314
+      ],
+      "rss_baseline_mib": 95.328125,
+      "rss_peak_mib": 4630.8125,
+      "rss_delta_mib": 4535.484375,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int64",
+          "subject": "int64",
+          "label": "int64",
+          "ax": "float64",
+          "ay": "float64",
+          "az": "float64",
+          "gx": "float64",
+          "gy": "float64",
+          "gz": "float64"
+        },
+        "changed": [
+          "session: int16 -> int64",
+          "subject: int16 -> int64",
+          "label: int8 -> int64",
+          "ax: float32 -> float64",
+          "ay: float32 -> float64",
+          "az: float32 -> float64",
+          "gx: float32 -> float64",
+          "gy: float32 -> float64",
+          "gz: float32 -> float64"
+        ],
+        "exact": false
+      }
+    },
+    {
+      "format": "pickle",
+      "write_s": 0.04466387699358165,
+      "write_s_all": [
+        0.04466387699358165,
+        0.0594208839465864,
+        0.05951377400197089,
+        0.042271921993233263,
+        0.0420589959830977
+      ],
+      "bytes": 88801193,
+      "read_s": 1.0069400849752128,
+      "read_s_all": [
+        2.0878168730414473,
+        1.0223004650324583,
+        1.0069400849752128,
+        1.001247338950634,
+        0.9920069670188241
+      ],
+      "rss_baseline_mib": 95.171875,
+      "rss_peak_mib": 264.71875,
+      "rss_delta_mib": 169.546875,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "float32",
+          "ay": "float32",
+          "az": "float32",
+          "gx": "float32",
+          "gy": "float32",
+          "gz": "float32"
+        },
+        "changed": [],
+        "exact": true
+      }
+    },
+    {
+      "format": "npz",
+      "write_s": 7.354832823970355,
+      "write_s_all": [
+        7.391815291019157,
+        7.346772470977157,
+        7.366063758963719,
+        7.354832823970355,
+        7.339482776995283
+      ],
+      "bytes": 31245867,
+      "read_s": 0.521155255031772,
+      "read_s_all": [
+        0.5323170429910533,
+        0.5224189639557153,
+        0.5062195229693316,
+        0.521155255031772,
+        0.510749395005405
+      ],
+      "rss_baseline_mib": 95.203125,
+      "rss_peak_mib": 350.21875,
+      "rss_delta_mib": 255.015625,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "float32",
+          "ay": "float32",
+          "az": "float32",
+          "gx": "float32",
+          "gy": "float32",
+          "gz": "float32"
+        },
+        "changed": [],
+        "exact": true
+      }
+    },
+    {
+      "format": "hdf5",
+      "write_s": 2.557088691042736,
+      "write_s_all": [
+        2.5651082870317623,
+        2.5574855360318907,
+        2.5436334619880654,
+        2.557088691042736,
+        2.542959376005456
+      ],
+      "bytes": 31984705,
+      "read_s": 0.5813218560069799,
+      "read_s_all": [
+        0.6105448890011758,
+        0.5629403130151331,
+        0.630148232972715,
+        0.5813218560069799,
+        0.5670459039974958
+      ],
+      "rss_baseline_mib": 95.203125,
+      "rss_peak_mib": 382.859375,
+      "rss_delta_mib": 287.65625,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "float32",
+          "ay": "float32",
+          "az": "float32",
+          "gx": "float32",
+          "gy": "float32",
+          "gz": "float32"
+        },
+        "changed": [],
+        "exact": true
+      }
+    },
+    {
+      "format": "parquet-none",
+      "write_s": 2.227228331961669,
+      "write_s_all": [
+        2.227228331961669,
+        2.2320867279777303,
+        2.3287035020184703,
+        2.1516387370065786,
+        1.169419452024158
+      ],
+      "bytes": 32878754,
+      "read_s": 0.45869449398014694,
+      "read_s_all": [
+        1.049067541025579,
+        0.45869449398014694,
+        0.45765713800210506,
+        0.4772500750259496,
+        0.45841356698656455
+      ],
+      "rss_baseline_mib": 95.21875,
+      "rss_peak_mib": 494.390625,
+      "rss_delta_mib": 399.171875,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "float32",
+          "ay": "float32",
+          "az": "float32",
+          "gx": "float32",
+          "gy": "float32",
+          "gz": "float32"
+        },
+        "changed": [],
+        "exact": true
+      }
+    },
+    {
+      "format": "parquet-snappy",
+      "write_s": 2.174016217002645,
+      "write_s_all": [
+        1.497053305967711,
+        2.174016217002645,
+        2.23315632896265,
+        2.2441537129925564,
+        1.9999053940409794
+      ],
+      "bytes": 32670106,
+      "read_s": 0.4591427409905009,
+      "read_s_all": [
+        0.5057343700318597,
+        0.45737308502430096,
+        0.45273213903419673,
+        0.4698117129737511,
+        0.4591427409905009
+      ],
+      "rss_baseline_mib": 95.21875,
+      "rss_peak_mib": 484.9375,
+      "rss_delta_mib": 389.71875,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "float32",
+          "ay": "float32",
+          "az": "float32",
+          "gx": "float32",
+          "gy": "float32",
+          "gz": "float32"
+        },
+        "changed": [],
+        "exact": true
+      }
+    },
+    {
+      "format": "parquet-zstd",
+      "write_s": 2.0737296320148744,
+      "write_s_all": [
+        2.055086640000809,
+        2.0737296320148744,
+        2.1465585080441087,
+        2.0628649049904197,
+        2.0855132839642465
+      ],
+      "bytes": 28267742,
+      "read_s": 0.4373643900034949,
+      "read_s_all": [
+        0.4551411530119367,
+        0.42808059096569195,
+        0.442302948969882,
+        0.4373643900034949,
+        0.41690643096808344
+      ],
+      "rss_baseline_mib": 95.21875,
+      "rss_peak_mib": 449.84375,
+      "rss_delta_mib": 354.625,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "float32",
+          "ay": "float32",
+          "az": "float32",
+          "gx": "float32",
+          "gy": "float32",
+          "gz": "float32"
+        },
+        "changed": [],
+        "exact": true
+      }
+    },
+    {
+      "format": "feather-zstd",
+      "write_s": 0.22531683498527855,
+      "write_s_all": [
+        0.25706738099688664,
+        0.20859039202332497,
+        0.2669243320124224,
+        0.22531683498527855,
+        0.21206905599683523
+      ],
+      "bytes": 31603554,
+      "read_s": 0.38017577200662345,
+      "read_s_all": [
+        0.4723956739762798,
+        0.37822865101043135,
+        0.3826393189956434,
+        0.3777308720164001,
+        0.38017577200662345
+      ],
+      "rss_baseline_mib": 95.21875,
+      "rss_peak_mib": 449.1875,
+      "rss_delta_mib": 353.96875,
+      "rows": 2400000,
+      "fidelity": {
+        "dtypes": {
+          "t_ms": "int64",
+          "session": "int16",
+          "subject": "int16",
+          "label": "int8",
+          "ax": "float32",
+          "ay": "float32",
+          "az": "float32",
+          "gx": "float32",
+          "gy": "float32",
+          "gz": "float32"
+        },
+        "changed": [],
+        "exact": true
+      }
+    }
+  ]
+}

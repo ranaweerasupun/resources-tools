@@ -26,10 +26,11 @@ handicapped. Every task gives pandas `columns=` for the columns it actually
 needs, and `filters=` where a predicate applies, because both exist and both
 are the right way to use it.
 
-That fairness is load-bearing. My first version of this benchmark omitted
+This fairness matters. My first version of this benchmark omitted
 `columns=` on four of the tasks and reported DuckDB at up to 123x. Most of
-that gap was pandas materialising ten columns to count one -- 152 ms against
-6 ms for the same answer, entirely within pandas. The `filtered_naive` task
+that gap was pandas loading ten columns to count one. On a Raspberry Pi 5
+with 2.4 million rows, that costs 481 ms against 21 ms for the same answer,
+entirely within pandas. The `filtered_naive` task
 preserves that comparison deliberately, because the cost of forgetting is
 worth knowing, but it is labelled as what it is rather than being passed off
 as an engine difference.
@@ -281,8 +282,8 @@ def t_filtered_naive():
 
     The gap between this task's pandas timing and `filtered_split`'s pandas
     timing is not a difference between engines. It is the cost of
-    materialising ten columns to count one. On a Pi that was 152 ms against
-    6 ms for the same answer.
+    loading ten columns to count one. On a Raspberry Pi 5 with 2.4 million
+    rows, that was 481 ms against 21 ms for the same answer.
 
     The engines differ in whether you have to REMEMBER. DuckDB works out
     which columns the query touches; pandas reads whatever you asked for,
@@ -524,6 +525,15 @@ def main():
     if not args.tmpdir:
         shutil.rmtree(ws, ignore_errors=True)
 
+    # Exit with an error if any task failed or the engines disagreed, so a
+    # CI job running this benchmark fails instead of passing quietly.
+    errored = [r["task"] for r in results
+               if "error" in r.get("pandas", {}) or "error" in r.get("duckdb", {})]
+    if errored:
+        print(f"\n  !! these tasks failed to run: {', '.join(errored)}")
+    if disagreed or errored:
+        raise SystemExit(1)
+
 
 def run_scaling(args, ws, env):
     """
@@ -577,6 +587,9 @@ def run_scaling(args, ws, env):
              "mode": "scaling", "args": vars(args), "results": out}, indent=2))
         print(f"\n  wrote {args.json}")
     shutil.rmtree(ws, ignore_errors=True)
+
+    if any("error" in r["pandas"] or "error" in r["duckdb"] for r in out):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

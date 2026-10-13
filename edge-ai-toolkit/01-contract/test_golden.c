@@ -55,7 +55,7 @@ int main(void)
         printf("CONTRACT HASH MISMATCH\n");
         printf("  contract_data.h    %s\n", CONTRACT_HASH);
         printf("  golden_vectors.h   %s\n", GOLDEN_CONTRACT_HASH);
-        printf("\n  The vectors were frozen against a different seam.\n");
+        printf("\n  The golden vectors were made from a different version of the contract.\n");
         printf("  Run: python data_contract.py && python gen_golden.py\n");
         return 2;
     }
@@ -66,6 +66,13 @@ int main(void)
     for (int s = 0; s < N_GOLDEN_SCENES; s++) {
         const golden_scene_t *sc = &GOLDEN_SCENES[s];
         float got[N_FEATURES];
+
+        /* Fill every slot with NaN first. A slot that features_extract()
+         * never writes then fails on every platform, instead of passing or
+         * failing depending on whatever was left on the stack. */
+        for (int f = 0; f < N_FEATURES; f++) {
+            got[f] = NAN;
+        }
 
         features_extract(sc->input, got);
 

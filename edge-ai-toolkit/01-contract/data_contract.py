@@ -60,6 +60,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import json
 import sys
 from pathlib import Path
@@ -83,9 +84,9 @@ CONTRACT = {
     "WINDOW_MS": 2000,
 
     # --- channels -------------------------------------------------------
-    # ORDER IS LOAD-BEARING. The firmware fills its buffer in this order and
-    # the model was trained on this order. Swap two entries and nothing
-    # crashes; the model just reads pitch where it expects roll.
+    # The order matters. The firmware fills its buffer in this order and the
+    # model was trained on this order. If two entries are swapped, nothing
+    # crashes; the model simply reads one sensor axis where it expects another.
     "CHANNELS": ["ax", "ay", "az", "gx", "gy", "gz"],
 
     # --- feature layout -------------------------------------------------
@@ -125,7 +126,11 @@ CONTRACT = {
     # is a real, plausible reading. Using it for absence makes "no data"
     # indistinguishable from "a valid measurement of nothing happening".
     #
-    # A sentinel must be a value the sensor CANNOT produce.
+    # A sentinel must be a value that never appears as a real reading.
+    # -32768 is the lowest value a signed 16-bit number can hold, and some
+    # sensors do report it when a reading hits the limit of their range. So
+    # the code that reads the sensor must clamp real readings to -32767 or
+    # above, which reserves -32768 for "missing" alone.
     "SENTINEL_MISSING": -32768.0,
 
     # --- golden vector tolerances ---------------------------------------
@@ -200,13 +205,15 @@ def validate(d):
     if d["FEATURE_LAYOUT"] not in ("channel_major", "stat_major"):
         problems.append(f"unknown FEATURE_LAYOUT {d['FEATURE_LAYOUT']!r}")
 
-    # The sentinel must be outside anything the sensor can report, or it is
-    # ambiguous with real data.
+    # The sentinel must be one of the two ends of the int16 range. Any value
+    # in between is an ordinary reading. An end value can be reserved, as
+    # long as the sensor driver clamps real readings away from it (see the
+    # note on SENTINEL_MISSING above).
     if -32768 < d["SENTINEL_MISSING"] < 32767:
         problems.append(
-            f"SENTINEL_MISSING={d['SENTINEL_MISSING']} is inside the int16 "
-            f"range the sensor can produce, so it cannot be distinguished "
-            f"from a real reading.")
+            f"SENTINEL_MISSING={d['SENTINEL_MISSING']} is an ordinary int16 "
+            f"reading. Use -32768 or 32767, and clamp real readings away from "
+            f"the value you choose.")
 
     if d["GOLDEN_REL_TOL"] <= 0 or d["GOLDEN_ABS_TOL"] <= 0:
         problems.append("golden tolerances must be positive")
@@ -402,8 +409,20 @@ def main():
             if not p.exists():
                 drifted.append(f"{name} is MISSING")
             elif p.read_text() != want:
-                drifted.append(f"{name} HAS DRIFTED -- someone hand-edited a "
-                               f"generated file")
+                # Tell the two causes apart using the hash stamped in the
+                # file's banner. A different hash means the file was
+                # generated from an older contract and never regenerated.
+                # The same hash means the contract has not changed, so the
+                # file itself was edited by hand.
+                m = re.search(r"Hash: ([0-9a-f]{12})", p.read_text())
+                if m and m.group(1) != h:
+                    drifted.append(f"{name} is OUT OF DATE -- generated from "
+                                   f"contract {m.group(1)}, not the current "
+                                   f"one; the contract changed and nobody "
+                                   f"regenerated")
+                else:
+                    drifted.append(f"{name} HAS DRIFTED -- someone hand-edited "
+                                   f"a generated file")
         if drifted:
             print(f"CONTRACT CHECK FAILED (hash {h})", file=sys.stderr)
             for x in drifted:
@@ -430,8 +449,9 @@ def main():
         print(f"\n  {len(open_)} decision(s) still open: {', '.join(open_)}")
         print(f"  contract_runtime.h will #error until they are set. "
               f"That is intended.")
-    print(f"\n  Golden vectors are stamped with the contract hash, so run")
-    print(f"  gen_golden.py next or they will certify a seam that has moved.")
+    print(f"\n  Golden vectors record the contract hash they were made from,")
+    print(f"  so run gen_golden.py next. Otherwise they still describe the")
+    print(f"  old contract, and the golden test will refuse to run.")
 
 
 if __name__ == "__main__":

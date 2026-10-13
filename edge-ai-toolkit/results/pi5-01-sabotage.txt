@@ -1,0 +1,18 @@
+  baseline: golden test passes
+
+  sabotage            result    detail
+  ----------------------------------------------------------------------------
+  ddof                CAUGHT    10 scenes, 240 feature comparisons, 22 failures | scenes: alternating, ramp, impulse, negative, realistic
+  layout              CAUGHT    10 scenes, 240 feature comparisons, 80 failures | scenes: all_zero, channel_distinct, scale_split, alternating, ramp, impulse, negative, some_missing, all_missing, realistic
+  sentinel_zero       CAUGHT    10 scenes, 240 feature comparisons, 4 failures | scenes: all_missing
+  sentinel_included   CAUGHT    10 scenes, 240 feature comparisons, 22 failures | scenes: some_missing, all_missing
+  scale_swap          CAUGHT    10 scenes, 240 feature comparisons, 90 failures | scenes: channel_distinct, scale_split, alternating, ramp, impulse, negative, some_missing, all_missing, realistic
+  scale_copy_paste    CAUGHT    10 scenes, 240 feature comparisons, 30 failures | scenes: channel_distinct, scale_split, alternating, ramp, impulse, negative, some_missing, all_missing, realistic
+  minmax_swap         CAUGHT    10 scenes, 240 feature comparisons, 60 failures | scenes: alternating, ramp, impulse, negative, realistic
+  minmax_init_zero    CAUGHT    10 scenes, 240 feature comparisons, 38 failures | scenes: channel_distinct, scale_split, impulse, negative, some_missing, all_missing, realistic
+  off_by_one          CAUGHT    10 scenes, 240 feature comparisons, 46 failures | scenes: alternating, ramp, impulse, negative, realistic
+  zero_as_missing     CAUGHT    10 scenes, 240 feature comparisons, 33 failures | scenes: all_zero, ramp
+
+  10/10 sabotages detected
+
+  features.c restored; golden test passes again

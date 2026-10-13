@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -29,7 +30,7 @@ import pyarrow.parquet as pq
 
 _HERE = Path(__file__).resolve().parent
 sys.path[:0] = [str(_HERE.parent / "synth"), str(_HERE.parent), str(_HERE)]
-from synth import generate  # noqa: E402
+from synth import generate, SEED  # noqa: E402
 
 M = 1024 * 1024
 
@@ -54,7 +55,8 @@ def hdr(title, why):
 
 
 def make_table(ws, sessions=60, seconds=60, seed_shift=0, subjects=12):
-    df = generate(sessions, seconds, 50, subjects=subjects)
+    df = generate(sessions, seconds, 50, subjects=subjects,
+                  seed=SEED + seed_shift)
     return df.sort_values(["subject", "session", "t_ms"]).reset_index(drop=True)
 
 
@@ -96,119 +98,87 @@ def demo_query(ws):
 
 def demo_validate(ws):
     """
-    Dataset validation as assertions rather than a script.
+    Dataset checks as a command that exits with an error.
 
-    These are the checks you would want to fail a build. Written as SQL they
-    are short enough that people actually keep them up to date, and they run
-    against the file rather than against a DataFrame someone remembered to
-    build correctly.
+    The checks live in validate_dataset.py. Written as SQL they are short
+    enough that people keep them up to date, they run against the files
+    themselves, and the command exits with status 1 when one fails, which is
+    what makes a CI job fail.
     """
     hdr("2. Validation you can run in CI",
-        "Facts about the dataset, as assertions instead of a notebook cell.")
+        "Facts about the dataset, as a command that fails, not a notebook cell.")
 
-    df = make_table(ws)
-    # Introduce two realistic defects to prove the checks bite.
-    df.loc[df["subject"] == 7, "label"] = 0          # a subject with no positives
-    df.loc[df["session"] == 3, "gx"] = 0.0           # a dead channel in one session
-    p = ws / "canonical.parquet"
-    df.to_parquet(p, index=False, compression="zstd")
+    clean = make_table(ws)
+    good = ws / "clean.parquet"
+    clean.to_parquet(good, index=False, compression="zstd")
 
-    con = duckdb.connect()
-    con.execute(f"CREATE VIEW t AS SELECT * FROM read_parquet('{p}')")
+    # The same data with two realistic defects, to prove the checks catch them.
+    bad_df = clean.copy()
+    bad_df.loc[bad_df["subject"] == 7, "label"] = 0   # a subject with no positives
+    bad_df.loc[bad_df["session"] == 3, "gx"] = 0.0    # a dead channel in one session
+    bad = ws / "defective.parquet"
+    bad_df.to_parquet(bad, index=False, compression="zstd")
 
-    checks = [
-        ("no subject is missing entirely",
-         "SELECT count(DISTINCT subject) FROM t", lambda v: v == 12),
-        ("every subject has at least one positive example",
-         """SELECT count(*) FROM (
-                SELECT subject FROM t GROUP BY subject HAVING sum(label) = 0)""",
-         lambda v: v == 0),
-        ("no channel is constant across the whole table",
-         """SELECT count(*) FROM (
-                SELECT 1 FROM t HAVING min(gx) = max(gx))""",
-         lambda v: v == 0),
-        ("no session has a constant channel",
-         """SELECT count(*) FROM (
-                SELECT session FROM t GROUP BY session
-                HAVING min(gx) = max(gx))""",
-         lambda v: v == 0),
-        ("class balance is within 20:1",
-         "SELECT max(1.0*n/p) FROM (SELECT count(*) n, greatest(sum(label),1) p FROM t GROUP BY subject)",
-         lambda v: v <= 20),
-        ("no NULLs in any channel",
-         "SELECT count(*) FROM t WHERE ax IS NULL OR gx IS NULL",
-         lambda v: v == 0),
-    ]
+    script = Path(__file__).resolve().parent / "validate_dataset.py"
+    for label, path in (("clean data", good), ("defective data", bad)):
+        print(f"  $ python validate_dataset.py check {path.name}   ({label})")
+        proc = subprocess.run([sys.executable, str(script), "check", str(path)],
+                              capture_output=True, text=True)
+        print(proc.stdout.rstrip())
+        print(f"  exit status: {proc.returncode}\n")
 
-    failed = 0
-    for name, sql, ok in checks:
-        v = con.execute(sql).fetchone()[0]
-        good = ok(v)
-        failed += not good
-        print(f"  {'ok  ' if good else 'FAIL'}  {name:<48} = {v}")
-
-    print(f"\n  {len(checks)-failed}/{len(checks)} passed")
-    print("\n  Three checks failed, and they were supposed to: this demo")
-    print("  deliberately zeroes one subject's labels and flatlines one")
-    print("  session's gx channel.")
-    print("\n  Note that only TWO defects were injected. The class-balance")
-    print("  check fails as a consequence of the first one, not")
-    print("  independently -- a subject with no positives has an infinite")
-    print("  ratio. Checks fail in correlated groups, so read the whole")
-    print("  list before concluding you have three separate problems.")
-    print("\n  A validation suite that has never failed tells you nothing.")
-    print("  Same argument as the sabotage script in 01-contract: break it")
-    print("  on purpose, and confirm it notices.")
+    print("  Two defects were injected, but three checks failed. The class")
+    print("  balance check fails as a consequence of the zeroed labels: a")
+    print("  subject with no positives gives the largest ratio the check can")
+    print("  produce. Checks fail in related groups, so read the whole list")
+    print("  before concluding you have three separate problems.")
+    print("\n  A set of checks that has never failed tells you nothing. Same")
+    print("  idea as the sabotage script in 01-contract: break the data on")
+    print("  purpose, and confirm the checks notice.")
 
 
 def demo_leakage(ws):
     """
-    Proving a train/test split is disjoint, in SQL.
+    Checking that a train/test split shares no subjects or sessions.
 
-    The safety-critical property in any subject-wise evaluation is that no
-    subject appears on both sides. Written as a query it becomes something
-    CI can assert rather than something a comment claims.
+    The check must compare the datasets that training and evaluation really
+    read. Two complementary filters of one table cannot overlap by
+    definition, so checking them proves nothing.
     """
     hdr("3. Asserting a split has no leakage",
-        "The property your metrics depend on, checked instead of assumed.")
+        "Compare the files training and evaluation actually read.")
 
     df = make_table(ws)
-    root = ws / "hive"
-    pq.write_to_dataset(pa.Table.from_pandas(df, preserve_index=False),
-                        root_path=str(root), partition_cols=["subject"],
-                        compression="zstd")
-
-    con = duckdb.connect()
     held_out = [3, 7]
-    src = f"read_parquet('{root}/**/*.parquet', hive_partitioning = true)"
+    script = Path(__file__).resolve().parent / "validate_dataset.py"
 
-    overlap = con.execute(f"""
-        WITH train AS (SELECT DISTINCT subject FROM {src}
-                       WHERE subject NOT IN ({','.join(map(str, held_out))})),
-             test  AS (SELECT DISTINCT subject FROM {src}
-                       WHERE subject IN ({','.join(map(str, held_out))}))
-        SELECT count(*) FROM train JOIN test USING (subject)
-    """).fetchone()[0]
+    # An honest split: whole subjects held out.
+    test_mask = df["subject"].isin(held_out)
+    df[~test_mask].to_parquet(ws / "train.parquet", index=False)
+    df[test_mask].to_parquet(ws / "test.parquet", index=False)
 
-    counts = con.execute(f"""
-        SELECT
-          sum(CASE WHEN subject IN ({','.join(map(str, held_out))})
-                   THEN 0 ELSE 1 END) AS train_rows,
-          sum(CASE WHEN subject IN ({','.join(map(str, held_out))})
-                   THEN 1 ELSE 0 END) AS test_rows
-        FROM {src}
-    """).fetchone()
+    # The common mistake: shuffle the rows and cut them 80/20. Windows from
+    # the same session, and the same person, end up on both sides.
+    shuffled = df.sample(frac=1.0, random_state=0)
+    cut = int(len(shuffled) * 0.8)
+    shuffled.iloc[:cut].to_parquet(ws / "train_random.parquet", index=False)
+    shuffled.iloc[cut:].to_parquet(ws / "test_random.parquet", index=False)
 
-    print(f"  held out subjects {held_out}")
-    print(f"    train {counts[0]:>9,} rows")
-    print(f"    test  {counts[1]:>9,} rows")
-    print(f"    subjects on both sides: {overlap}   "
-          f"{'(disjoint)' if overlap == 0 else '<-- LEAKAGE'}")
+    for label, tr, te in (("subjects held out", "train", "test"),
+                          ("random row split", "train_random", "test_random")):
+        print(f"  $ python validate_dataset.py split {tr}.parquet "
+              f"{te}.parquet   ({label})")
+        proc = subprocess.run([sys.executable, str(script), "split",
+                               str(ws / f"{tr}.parquet"),
+                               str(ws / f"{te}.parquet")],
+                              capture_output=True, text=True)
+        print(proc.stdout.rstrip())
+        print(f"  exit status: {proc.returncode}\n")
 
-    print("\n  Because the data is partitioned by subject, the test query")
-    print("  opens two directories and the train query opens the rest. The")
-    print("  split is enforced by the filesystem layout, not by a boolean")
-    print("  mask that could have the wrong sign.")
+    print("  The random split is how a model scores 99.4% in testing and far")
+    print("  less in the field: the test set holds the same people and the")
+    print("  same recordings it trained on. Run this check on the files your")
+    print("  training and evaluation code actually read.")
 
 
 def demo_union(ws):
@@ -220,13 +190,17 @@ def demo_union(ws):
     position, and fills the gaps with NULL.
     """
     hdr("4. Two sources, one query",
-        "union_by_name matches columns by name and NULLs the differences.")
+        "union_by_name matches columns by name and fills the gaps with NULL.")
 
     a = make_table(ws, sessions=30, subjects=6)
     a["source"] = "siteA"
-    b = make_table(ws, sessions=30, subjects=6)
+    b = make_table(ws, sessions=30, subjects=6, seed_shift=1)
     b["source"] = "siteB"
     b["ambient_c"] = 21.5                     # a column site A never recorded
+    # Site B's pipeline reports acceleration in m/s^2 instead of g, the
+    # kind of units mismatch Part 1 was about, arriving with a new dataset.
+    for c in ("ax", "ay", "az"):
+        b[c] = (b[c] * 9.80665).astype("float32")
 
     (ws / "sources").mkdir()
     a.to_parquet(ws / "sources" / "siteA.parquet", index=False)
@@ -235,25 +209,28 @@ def demo_union(ws):
     con = duckdb.connect()
     rows = con.execute(f"""
         SELECT source,
-               count(*)               AS n,
+               count(*)                AS n,
                count(DISTINCT subject) AS subjects,
-               round(avg(ax), 4)      AS ax_mean,
-               count(ambient_c)       AS has_ambient
+               round(avg(sqrt(ax*ax + ay*ay + az*az)), 2) AS accel_mag,
+               count(ambient_c)        AS has_ambient
         FROM read_parquet('{ws}/sources/*.parquet', union_by_name = true)
         GROUP BY source ORDER BY source
     """).fetchall()
 
-    print(f"  {'source':<8}{'rows':>10}{'subjects':>10}{'ax_mean':>10}"
+    print(f"  {'source':<8}{'rows':>10}{'subjects':>10}{'accel_mag':>11}"
           f"{'ambient_c':>12}")
     for r in rows:
-        print(f"  {r[0]:<8}{r[1]:>10,}{r[2]:>10}{r[3]:>10}{r[4]:>12,}")
+        print(f"  {r[0]:<8}{r[1]:>10,}{r[2]:>10}{r[3]:>11}{r[4]:>12,}")
 
     print("\n  siteA has no ambient_c column at all. Without union_by_name")
     print("  this query fails; with it, siteA's rows carry NULL there and")
     print("  count(ambient_c) reports 0 because count ignores NULLs.")
-    print("\n  Comparing distributions per source like this is how you catch")
-    print("  a second dataset that does not match the first -- different")
-    print("  scaling, different orientation, different gravity convention.")
+    print("\n  accel_mag is the average size of the acceleration vector. The")
+    print("  two sites record the same kind of activity, so it should be")
+    print("  similar. Site B's is about nine times larger, close to the")
+    print("  factor of 9.8 between m/s^2 and g: site B reports m/s^2. One")
+    print("  GROUP BY per source catches this before the two datasets are")
+    print("  trained on together.")
 
 
 def demo_memory(ws):
@@ -300,7 +277,7 @@ def demo_memory(ws):
         shutil.rmtree(ws / "spill", ignore_errors=True)
         (ws / "sorted.parquet").unlink(missing_ok=True)
 
-    print("\n  A budget smaller than the data still completes: the engine")
+    print("\n  A budget about the size of the data still completes: the engine")
     print("  spills intermediate results to temp_directory and takes")
     print("  longer. (The spill files are deleted as soon as they are")
     print("  finished with, so there is nothing left to measure afterwards")
@@ -308,7 +285,7 @@ def demo_memory(ws):
     print("\n  Below some point it stops, and this is the part that matters")
     print("  on a gateway: it raises an exception you can catch, rather")
     print("  than growing until the kernel's OOM killer takes the process")
-    print("  out. pandas gives you the second behaviour.")
+    print("  out. pandas has no memory setting, so it gets the second.")
 
 
 def demo_arrow(ws):
@@ -348,7 +325,7 @@ def demo_arrow(ws):
     print(f"\n  zero_copy_only=True succeeded, so that last step is a view")
     print(f"  over the same bytes: {col.dtype}, {col.nbytes/M:.1f} MiB not "
           f"copied.")
-    print("\n  Worth knowing for post 4: this works because Arrow's in-memory")
+    print("\n  Worth knowing for Part 4: this works because Arrow's in-memory")
     print("  layout is contiguous and typed the same way numpy's is.")
 
 
