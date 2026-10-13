@@ -131,4 +131,16 @@ especially smaller ones, are very welcome.
 
 ## Licence
 
-MIT.
+- **Code** is under the MIT licence, in [`LICENSE`](../LICENSE) at the root of
+  this repository.
+- **The benchmark results** in `results/` and **the documentation**, meaning
+  the READMEs, are under
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). You may reuse them
+  for any purpose, including commercially, as long as you credit
+  Supun Sriyananda and link to this repository.
+
+## Citing this work
+
+If you use this code or these results in research, please cite the
+repository. GitHub's **Cite this repository** button, in the sidebar, gives a
+ready-made reference from [`CITATION.cff`](../CITATION.cff).

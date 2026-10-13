@@ -209,3 +209,8 @@ From `../results/pi5-duckdb.json` and `../results/pi5-duckdb-scaling.json`:
   for SQLite.
 - **On the microcontroller.** None of this runs there. This is code for a
   gateway or a workstation.
+
+## Licence
+
+Code in this folder is under the MIT licence. This README is under CC BY 4.0. See the
+[top-level README](../README.md#licence) for details.

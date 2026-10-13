@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: >-
+  If you use this code or the benchmark results in your work, please cite it
+  as below.
+title: "resources-tools: companion code and benchmark results for Bit to Byte Academy"
+abstract: >-
+  Companion code for articles on bittobyteacademy.com. It includes the
+  edge-ai-toolkit, which covers data contracts between Python training code
+  and C firmware, a benchmark of ten storage options for sensor data, and a
+  comparison of pandas and DuckDB, with results measured on a Raspberry Pi 5,
+  and examples for running services with systemd on embedded Linux.
+type: software
+authors:
+  - given-names: Supun
+    family-names: Sriyananda
+repository-code: "https://github.com/ranaweerasupun/resources-tools"
+url: "https://github.com/ranaweerasupun/resources-tools"
+license: MIT
+keywords:
+  - edge AI
+  - embedded systems
+  - data contracts
+  - Parquet
+  - DuckDB
+  - Raspberry Pi
+  - systemd

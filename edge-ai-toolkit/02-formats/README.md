@@ -177,3 +177,8 @@ distinct readings.
 The saving moves into memory instead: with `int16` columns, the table in
 pandas shrinks from 84.7 MiB to 57.2 MiB, and the peak memory needed to read
 the zstd Parquet file fell by about 17% in these runs.
+
+## Licence
+
+Code in this folder is under the MIT licence. This README is under CC BY 4.0. See the
+[top-level README](../README.md#licence) for details.

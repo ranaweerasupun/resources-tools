@@ -263,3 +263,8 @@ runs in another:
 - the order in which features are placed in the model's input
 - how data structures are packed in memory and the byte order of data sent
   between devices
+
+## Licence
+
+Code in this folder is under the MIT licence. This README is under CC BY 4.0. See the
+[top-level README](../README.md#licence) for details.
